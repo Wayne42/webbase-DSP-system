@@ -34,6 +34,25 @@
 #define DSP_SAMPLINGFREQ 96000
 #define DSP_SAMPLING_T 11 // 10,4 µs ist die Periodendauer von der Samplingfrequnez
 
+#define NUM_FILTERS 8           // Anzahl der Filter (muss zu FILTER_COUNT in data/app.js passen)
+#define DSP_ADDR_UNASSIGNED 0   // Platzhalter für noch nicht vergebene DSP-Adressen (0 = Stack, wird nie beschrieben)
+#define FILTER_PARAMETER_COUNT 5 // B2, B1, B0, A2, A1 liegen hintereinander im DSP-Speicher
+
+// DSP-Adressen eines Filters (Stereo: Ch1 + Ch2)
+// Es wird nur die Startadresse (B2) benötigt, B1, B0, A2, A1 folgen direkt danach
+struct FilterDSPAddresses
+{
+    uint16_t b2Ch1;
+    uint16_t slewModeCh1;
+    uint16_t b2Ch2;
+    uint16_t slewModeCh2;
+
+    constexpr bool isAssigned() const
+    {
+        return b2Ch1 != DSP_ADDR_UNASSIGNED && b2Ch2 != DSP_ADDR_UNASSIGNED;
+    }
+};
+
 class GlobalData
 {
 public:
@@ -47,40 +66,19 @@ public:
         double a1 = 0.0, a2 = 0.0, b0 = 1.0, b1 = 0.0, b2 = 0.0;
         float freq = 0.0f, gain = 0.0f, q = 0.0f, samplingFreq = DSP_SAMPLINGFREQ;
         uint16_t slewMode = 8330;
-        uint8_t parameterCount = 5; // for saveload Write der Coeefizenten
+        FilterDSPAddresses dspAddresses = {DSP_ADDR_UNASSIGNED, DSP_ADDR_UNASSIGNED, DSP_ADDR_UNASSIGNED, DSP_ADDR_UNASSIGNED};
 
-        // Adresses Ch1
-        const uint16_t dspAdressB2Ch1;
-        const uint16_t dspAdressB1Ch1;
-        const uint16_t dspAdressB0Ch1;
-        const uint16_t dspAdressA2Ch1;
-        const uint16_t dspAdressA1Ch1;
-        const uint16_t dspAdressSlewMCh1;
-        // Adresses Ch2
-        const uint16_t dspAdressB2Ch2;
-        const uint16_t dspAdressB1Ch2;
-        const uint16_t dspAdressB0Ch2;
-        const uint16_t dspAdressA2Ch2;
-        const uint16_t dspAdressA1Ch2;
-        const uint16_t dspAdressSlewMCh2;
+        // Schreibt 5 Koeffizienten per Safeload auf beide Kanäle
+        void writeCoefficientsSafeload(double b2Value, double b1Value, double b0Value, double a2Value, double a1Value);
 
     public:
-        // Konstruktor Adressen müssen übergeben werden
-        Filter(
-            uint16_t b2Ch1, uint16_t b1Ch1, uint16_t b0Ch1,
-            uint16_t a2Ch1, uint16_t a1Ch1, uint16_t slewMCh1,
-            uint16_t b2Ch2, uint16_t b1Ch2, uint16_t b0Ch2,
-            uint16_t a2Ch2, uint16_t a1Ch2, uint16_t slewMCh2)
-            : dspAdressB2Ch1(b2Ch1), dspAdressB1Ch1(b1Ch1), dspAdressB0Ch1(b0Ch1),
-              dspAdressA2Ch1(a2Ch1), dspAdressA1Ch1(a1Ch1), dspAdressSlewMCh1(slewMCh1),
-              dspAdressB2Ch2(b2Ch2), dspAdressB1Ch2(b1Ch2), dspAdressB0Ch2(b0Ch2),
-              dspAdressA2Ch2(a2Ch2), dspAdressA1Ch2(a1Ch2), dspAdressSlewMCh2(slewMCh2)
-        {
-            hasChanged = false;
-            hasChangedBypass = false;
-            bypass = 0;
-            // Optional: weitere Initialisierung
-        }
+        // Standardkonstruktor, damit Filter als Array in GlobalData liegen können
+        // Die DSP-Adressen werden im GlobalData-Konstruktor über setDSPAddresses() gesetzt
+        Filter() : hasChanged(false), hasChangedBypass(false) {}
+
+        void setDSPAddresses(const FilterDSPAddresses &addresses);
+        const FilterDSPAddresses &getDSPAddresses() const;
+        bool hasDSPAddresses() const; // false, wenn die Adressen noch Platzhalter sind
 
         // Getter und Setter für alle Werte
         bool getHasChanged() const;
@@ -121,30 +119,6 @@ public:
 
         uint16_t getSlewMode() const;
         void setSlewMode(uint16_t value);
-
-        uint16_t getDSPAdressA1Ch1() const;
-
-        uint16_t getDSPAdressA2Ch1() const;
-
-        uint16_t getDSPAdressB0Ch1() const;
-
-        uint16_t getDSPAdressB1Ch1() const;
-
-        uint16_t getDSPAdressB2Ch1() const;
-
-        uint16_t getDSPAdressSlewModeCh1() const;
-
-        uint16_t getDSPAdressA1Ch2() const;
-
-        uint16_t getDSPAdressA2Ch2() const;
-
-        uint16_t getDSPAdressB0Ch2() const;
-
-        uint16_t getDSPAdressB1Ch2() const;
-
-        uint16_t getDSPAdressB2Ch2() const;
-
-        uint16_t getDSPAdressSlewModeCh2() const;
 
         uint8_t getParameterCount() const;
 
@@ -334,10 +308,7 @@ public:
     static GlobalData *getInstance();
 
     // Zugriff auf die Objekte
-    Filter *getFilter1Ptr();
-    Filter *getFilter2Ptr();
-    Filter *getFilter3Ptr();
-    Filter *getFilter4Ptr();
+    Filter *getFilterPtr(uint8_t index); // index 0 ... NUM_FILTERS-1, nullptr bei ungültigem Index
     Meter *getMeterPtr();
     Mute *getMute1Ptr();
     Safeload *getSafeloadPtr();
@@ -349,10 +320,7 @@ private:
 
     // Instanzen der verschachtelten Klassen
     Safeload safeload;
-    Filter filter1;
-    Filter filter2;
-    Filter filter3;
-    Filter filter4;
+    Filter filters[NUM_FILTERS];
     Meter meter;
     Mute mute1;
     Gain gainPost;

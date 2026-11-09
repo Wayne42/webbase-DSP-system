@@ -47,95 +47,48 @@ namespace DSPAddresses
     const uint16_t Safeload_Adress = 29; // Adresse für ZielAdresse im Safeload
     const uint16_t Safeload_Number = 30; // Adresse für Number und Trigger register
 
-    // Filter 1 Ch 1
-    constexpr uint16_t Ch1_Filter1_B2 = 24660;
-    constexpr uint16_t Ch1_Filter1_B1 = 24661;
-    constexpr uint16_t Ch1_Filter1_B0 = 24662;
-    constexpr uint16_t Ch1_Filter1_A2 = 24663;
-    constexpr uint16_t Ch1_Filter1_A1 = 24664;
-    constexpr uint16_t Ch1_Filter1_SlewMode = 50;
+    // Filter (Parametric EQ, EQS300MultiDPHWSlewP1)
+    // Pro Filter und Kanal wird nur die Adresse von B2 benötigt: B1, B0, A2, A1 liegen direkt dahinter (B2+1 ... B2+4).
+    // Quelle: Sigma Studio Export ../dsp/ParamAddress.dat (Targ_B2_1 und _slewmode).
+    // Für einen Filter ohne DSP-Block DSP_ADDR_UNASSIGNED eintragen, dann wird für ihn nichts zum DSP geschrieben.
+    constexpr FilterDSPAddresses Filters[NUM_FILTERS] = {
+        // B2 Ch1, Slew Ch1, B2 Ch2, Slew Ch2
+        {24732, 42, 24737, 48},   // Filter 1 (Ch1 Alg3  / Ch2 Alg5)
+        {24742, 54, 24747, 60},   // Filter 2 (Ch1 Alg1  / Ch2 Alg6)
+        {24752, 66, 24757, 72},   // Filter 3 (Ch1 Alg2  / Ch2 Alg7)
+        {24762, 78, 24767, 84},   // Filter 4 (Ch1 Alg4  / Ch2 Alg8)
+        {24777, 96, 24772, 90},   // Filter 5 (Ch1 Alg13 / Ch2 Alg9)
+        {24787, 108, 24782, 102}, // Filter 6 (Ch1 Alg16 / Ch2 Alg10)
+        {24797, 120, 24792, 114}, // Filter 7 (Ch1 Alg15 / Ch2 Alg11)
+        {24807, 132, 24802, 126}, // Filter 8 (Ch1 Alg14 / Ch2 Alg12)
+    };
 
-    // Filter 1 Ch 2
-    constexpr uint16_t Ch2_Filter1_B2 = 24665;
-    constexpr uint16_t Ch2_Filter1_B1 = 24666;
-    constexpr uint16_t Ch2_Filter1_B0 = 24667;
-    constexpr uint16_t Ch2_Filter1_A2 = 24668;
-    constexpr uint16_t Ch2_Filter1_A1 = 24669;
-    constexpr uint16_t Ch2_Filter1_SlewMode = 58;
-
-    // Filter 2 Ch 1
-    constexpr uint16_t Ch1_Filter2_B2 = 24670;
-    constexpr uint16_t Ch1_Filter2_B1 = 24671;
-    constexpr uint16_t Ch1_Filter2_B0 = 24672;
-    constexpr uint16_t Ch1_Filter2_A2 = 24673;
-    constexpr uint16_t Ch1_Filter2_A1 = 24674;
-    constexpr uint16_t Ch1_Filter2_SlewMode = 54;
-
-    // Filter 2 Ch 2
-    constexpr uint16_t Ch2_Filter2_B2 = 24675;
-    constexpr uint16_t Ch2_Filter2_B1 = 24676;
-    constexpr uint16_t Ch2_Filter2_B0 = 24677;
-    constexpr uint16_t Ch2_Filter2_A2 = 24678;
-    constexpr uint16_t Ch2_Filter2_A1 = 24679;
-    constexpr uint16_t Ch2_Filter2_SlewMode = 60;
-
-    // Filter 3 Ch 1
-    constexpr uint16_t Ch1_Filter3_B2 = 24680;
-    constexpr uint16_t Ch1_Filter3_B1 = 24681;
-    constexpr uint16_t Ch1_Filter3_B0 = 24682;
-    constexpr uint16_t Ch1_Filter3_A2 = 24683;
-    constexpr uint16_t Ch1_Filter3_A1 = 24684;
-    constexpr uint16_t Ch1_Filter3_SlewMode = 66;
-
-    // Filter 3 Ch 2
-    constexpr uint16_t Ch2_Filter3_B2 = 24685;
-    constexpr uint16_t Ch2_Filter3_B1 = 24686;
-    constexpr uint16_t Ch2_Filter3_B0 = 24687;
-    constexpr uint16_t Ch2_Filter3_A2 = 24688;
-    constexpr uint16_t Ch2_Filter3_A1 = 24689;
-    constexpr uint16_t Ch2_Filter3_SlewMode = 72;
-
-    // Filter 4 Ch 1
-    constexpr uint16_t Ch1_Filter4_B2 = 24690;
-    constexpr uint16_t Ch1_Filter4_B1 = 24691;
-    constexpr uint16_t Ch1_Filter4_B0 = 24692;
-    constexpr uint16_t Ch1_Filter4_A2 = 24693;
-    constexpr uint16_t Ch1_Filter4_A1 = 24694;
-    constexpr uint16_t Ch1_Filter4_SlewMode = 78;
-
-    // Filter 4 Ch 2
-    constexpr uint16_t Ch2_Filter4_B2 = 24695;
-    constexpr uint16_t Ch2_Filter4_B1 = 24696;
-    constexpr uint16_t Ch2_Filter4_B0 = 24697;
-    constexpr uint16_t Ch2_Filter4_A2 = 24698;
-    constexpr uint16_t Ch2_Filter4_A1 = 24699;
-    constexpr uint16_t Ch2_Filter4_SlewMode = 84;
-
-    // Mute Ch1
-    constexpr uint16_t Ch1_Mute = 93;
-    constexpr uint16_t Ch1_Mute_SlewMode = 92;
-    // Mute Ch2
-    constexpr uint16_t Ch2_Mute = 96;
-    constexpr uint16_t Ch2_Mute_SlewMode = 95;
-    // Pre Gain Ch1
+    // Mute Ch1 (MuteHWSlewAlgADAU145X1)
+    constexpr uint16_t Ch1_Mute = 141;
+    constexpr uint16_t Ch1_Mute_SlewMode = 140;
+    // Mute Ch2 (MuteHWSlewAlgADAU145X2)
+    constexpr uint16_t Ch2_Mute = 144;
+    constexpr uint16_t Ch2_Mute_SlewMode = 143;
+    // Pre Gain Ch1 (HWGainADAU145XAlg2)
     constexpr uint16_t Ch1_PreGain = 35;
     constexpr uint16_t Ch1_PreGain_SlewMode = 36;
-    // Pre Gain Ch2
+    // Pre Gain Ch2 (HWGainADAU145XAlg3)
     constexpr uint16_t Ch2_PreGain = 32;
     constexpr uint16_t Ch2_PreGain_SlewMode = 33;
-    // Post Gain Ch1
-    constexpr uint16_t Ch1_PostGain = 86;
-    constexpr uint16_t Ch1_PostGain_SlewMode = 87;
-    // Post Gain Ch2
-    constexpr uint16_t Ch2_PostGain = 89;
-    constexpr uint16_t Ch2_PostGain_SlewMode = 90;
-    // Meter
-    constexpr uint16_t Ch1_MeterL = 121;
-    constexpr uint16_t Ch2_MeterR = 107;
+    // Post Gain Ch1 (HWGainADAU145XAlg1)
+    constexpr uint16_t Ch1_PostGain = 137;
+    constexpr uint16_t Ch1_PostGain_SlewMode = 138;
+    // Post Gain Ch2 (HWGainADAU145XAlg4)
+    constexpr uint16_t Ch2_PostGain = 134;
+    constexpr uint16_t Ch2_PostGain_SlewMode = 135;
+    // Meter (SingleBandLevelDetS3001 / S3002, Wert X)
+    constexpr uint16_t Ch1_MeterL = 169;
+    constexpr uint16_t Ch2_MeterR = 155;
 
 }
 
 void handleNewDatafromWebsite();
+void handleFilterUpdate(GlobalData::Filter &filter, uint8_t filterNumber);
 void calculateFilterCoefficients(GlobalData::Filter &filter);
 void dspWriteRegister_8_24(uint16_t const address, float const data);
 void dspWriteRegisterFixPoint(uint16_t const address, uint32_t const data);

@@ -39,7 +39,7 @@
 
             <!-- Gain-Eingabe -->
             <label for="gainPreInput">Gain:</label>
-            <input type="text" id="gainPreInput" placeholder="z.B. 0 dB">
+            <input type="range" id="gainPreInput" placeholder="z.B. 0 dB">
             <button id="gainPreSend">Absenden</button>
 
             <!-- Ausgabe für Debug-Zwecke -->
@@ -47,121 +47,42 @@
         </div>
 
         <!-- =======================
-             Filter 1 Sektion
+             Filter Sektionen
+             Die Filter 1 ... FILTER_COUNT werden in app.js aus dem
+             Template #filterTemplate erzeugt und hier eingefügt
              ======================= -->
-        <div class="container">
-            <div class="filter-header">
-                <h1>Filter 1</h1>
-                <button id="bypassFilter1" class="bypass-btn">Bypass</button>
+        <template id="filterTemplate">
+            <div class="container filter-container">
+                <div class="filter-header">
+                    <h1 data-role="title">Filter</h1>
+                    <button data-role="bypass" class="bypass-btn">Bypass</button>
+                </div>
+
+                <!-- Filtertyp -->
+                <label data-role="typeLabel">Typ:</label>
+                <select data-role="type">
+                    <option value="bell">Bell</option>
+                </select>
+
+                <!-- Filterparameter -->
+                <label data-role="freqLabel">Frequenz:</label>
+                <input type="text" data-role="freq" placeholder="z.B. 440 Hz">
+
+                <label data-role="gainLabel">Gain:</label>
+                <input type="text" data-role="gain" placeholder="z.B. 10dB">
+
+                <label data-role="qLabel">Q:</label>
+                <input type="text" data-role="q" placeholder="z.B. 1">
+
+                <button data-role="send">Absenden</button>
+                <p data-role="output" class="outputText"></p>
             </div>
-
-            <!-- Filtertyp -->
-            <label for="typeFilter1">Typ:</label>
-            <select id="typeFilter1">
-                <option value="bell">Bell</option>
-                <option value="shelf">Shelf</option>
-            </select>
-
-            <!-- Filterparameter -->
-            <label for="freq1">Frequenz:</label>
-            <input type="text" id="freq1" placeholder="z.B. 440 Hz">
-
-            <label for="gain1">Gain:</label>
-            <input type="text" id="gain1" placeholder="z.B. 10dB">
-
-            <label for="q1">Q:</label>
-            <input type="text" id="q1" placeholder="z.B. 1">
-
-            <button id="filter1send">Absenden</button>
-            <p id="outputFilter1" class="outputText"></p>
-        </div>
-
-        <!-- =======================
-             Filter 2 Sektion
-             ======================= -->
-        <div class="container">
-            <div class="filter-header">
-                <h1>Filter 2</h1>
-                <button id="bypassFilter2" class="bypass-btn">Bypass</button>
-            </div>
-
-            <label for="typeFilter2">Typ:</label>
-            <select id="typeFilter2">
-                <option value="bellFilter2">Bell</option>
-            </select>
-
-            <label for="freq2">Frequenz:</label>
-            <input type="text" id="freq2" placeholder="z.B. 440 Hz">
-
-            <label for="gain2">Gain:</label>
-            <input type="text" id="gain2" placeholder="z.B. 10dB">
-
-            <label for="q2">Q:</label>
-            <input type="text" id="q2" placeholder="z.B. 1">
-
-            <button id="filter2send">Absenden</button>
-            <p id="outputFilter2" class="outputText"></p>
-        </div>
-
-        <!-- =======================
-             Filter 3 Sektion
-             ======================= -->
-        <div class="container">
-            <div class="filter-header">
-                <h1>Filter 3</h1>
-                <button id="bypassFilter3" class="bypass-btn">Bypass</button>
-            </div>
-
-            <label for="typeFilter3">Typ:</label>
-            <select id="typeFilter3">
-                <option value="bellFilter3">Bell</option>
-            </select>
-
-            <label for="freq3">Frequenz:</label>
-            <input type="text" id="freq3" placeholder="z.B. 440 Hz">
-
-            <label for="gain3">Gain:</label>
-            <input type="text" id="gain3" placeholder="z.B. 10dB">
-
-            <label for="q3">Q:</label>
-            <input type="text" id="q3" placeholder="z.B. 1">
-
-            <button id="filter3send">Absenden</button>
-            <p id="outputFilter3" class="outputText"></p>
-        </div>
-
-        <!-- =======================
-             Filter 4 Sektion
-             ======================= -->
-        <div class="container">
-            <div class="filter-header">
-                <h1>Filter 4</h1>
-                <button id="bypassFilter4" class="bypass-btn">Bypass</button>
-            </div>
-
-            <label for="typeFilter4">Typ:</label>
-            <select id="typeFilter4">
-                <option value="bellFilter4">Bell</option>
-                <option value="shelfFilter4">Shelf</option>
-            </select>
-
-            <label for="freq4">Frequenz:</label>
-            <input type="text" id="freq4" placeholder="z.B. 440 Hz">
-
-            <label for="gain4">Gain:</label>
-            <input type="text" id="gain4" placeholder="z.B. 10dB">
-
-            <label for="q4">Q:</label>
-            <input type="text" id="q4" placeholder="z.B. 1">
-
-            <button id="filter4send">Absenden</button>
-            <p id="outputFilter4" class="outputText"></p>
-        </div>
+        </template>
 
         <!-- =======================
              Post Filter Sektion
              ======================= -->
-        <div class="container">
+        <div class="container" id="postFilterContainer">
             <h1>Post Filter</h1>
 
             <!-- Gain für Post-Filter -->
