@@ -27,6 +27,10 @@ void setupHTTPWebServer(void)
     httpServer.on("/", HTTP_GET, handleRootHTML);                    // Route for the main page GET request
     httpServer.on("/main.css", HTTP_GET, handleRootCSS);             // Route for the CSS file GET request
     httpServer.on("/app.js", HTTP_GET, handleRootJS);                // Route for the JS file GET request
+    httpServer.on("/hoertest.html", HTTP_GET, []()
+                  { serveFile(PATH_HTML_HEARINGTEST, "text/html"); });          // Hearing test page
+    httpServer.on("/hoertest.js", HTTP_GET, []()
+                  { serveFile(PATH_JS_HEARINGTEST, "application/javascript"); }); // Hearing test JS
     httpServer.onNotFound(handleNotFound);                           // Route for handling 404 errors (page not found)
     httpServer.on("/mute", HTTP_POST, handleMute);                   // Route for handling POST requests to "/messages" --> Message from Client to Server
     // Routes for all filters: /filter1 ... /filterN and /bypassFilter1 ... /bypassFilterN
@@ -44,6 +48,26 @@ void setupHTTPWebServer(void)
     httpServer.begin(); // Start the httpServer
     // Debbug Print
     Serial.println("Webserver is running");
+}
+
+// Stream a file from SPIFFS to the client
+void serveFile(const char *path, const char *contentType)
+{
+    File file = SPIFFS.open(path, "r");
+
+    if (!file || file.isDirectory())
+    {
+        httpServer.send(404, "text/plain", String("File not found: ") + path);
+        return;
+    }
+
+    size_t deliveredBytes = httpServer.streamFile(file, contentType, 200);
+    file.close();
+
+    if (deliveredBytes == 0)
+    {
+        Serial.println(String("Fehler: Datei ") + path + " konnte nicht gesendet werden.");
+    }
 }
 
 // Handle the root path ("/") and send the HTML file to the client

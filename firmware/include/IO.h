@@ -31,6 +31,8 @@
 #define PATH_HTML_INDEX "/index.html"
 #define PATH_CSS_MAIN "/main.css"
 #define PATH_JS_APP "/app.js"
+#define PATH_HTML_HEARINGTEST "/hoertest.html"
+#define PATH_JS_HEARINGTEST "/hoertest.js"
 #define DSP_SAMPLINGFREQ 96000
 #define DSP_SAMPLING_T 11 // 10,4 µs ist die Periodendauer von der Samplingfrequnez
 

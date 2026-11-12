@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESP 32 Hörtest</title>
+    <!-- Verlinkung zur externen CSS-Datei (gleiche wie index.html) -->
+    <link rel="stylesheet" href="main.css">
+</head>
+
+<body>
+    <div class="container-wrapper">
+
+        <!-- =======================
+             Hörtest Sektion
+             ======================= -->
+        <div class="container">
+            <div class="filter-header">
+                <h1>Hörtest</h1>
+                <a href="/" class="page-link">Equalizer</a>
+            </div>
+
+            <p class="hint">
+                Die Lautstärke am Gerät auf ein angenehmes Maß stellen.
+                Auf jeder Frequenz wird ein Ton von leise bis laut lauter. Sobald du ihn hörst,
+                klicke auf „Ich höre den Ton“ (oder drücke die Leertaste).
+            </p>
+
+            <!-- Aktuelle Frequenz und Fortschritt -->
+            <label>Frequenz:</label>
+            <p id="testFreq" class="big-value">–</p>
+            <p id="testProgress" class="outputText">0 / 8</p>
+
+            <!-- Lautstärkeanzeige -->
+            <label style="display: hidden;">Lautstärke:</label>
+            <p id="testLevel" class="big-value" style="display: hidden;">– dBFS</p>
+            <div class="level-bar" style="display: hidden;"><div id="testLevelFill" class="level-bar-fill"></div></div>
+
+            <button id="testHeard" class="heard-btn" disabled>Ich höre den Ton</button>
+            <button id="testStart">Test starten</button>
+            <button id="testCancel" class="secondary-btn" disabled>Abbrechen</button>
+
+            <p id="outputTest" class="outputText"></p>
+        </div>
+
+        <!-- =======================
+             Ergebnisse / manuelles Patchen
+             Die Zeilen werden in hoertest.js aus #bandTemplate erzeugt
+             ======================= -->
+        <div class="container results-container">
+            <h1>Ergebnisse</h1>
+            <p class="hint">
+                Hörschwelle pro Frequenz. Mit dem Slider anpassen und mit ▶ bei dieser Lautstärke
+                probehören. Daraus ergibt sich der Gain des jeweiligen Filters.
+            </p>
+
+            <div id="bandList"></div>
+
+            <template id="bandTemplate">
+                <div class="band-row">
+                    <div class="band-head">
+                        <span data-role="freq" class="band-freq"></span>
+                        <span data-role="threshold" class="band-value"></span>
+                        <span data-role="gain" class="band-gain"></span>
+                        <button data-role="play" class="play-btn" title="Ton probehören">▶</button>
+                    </div>
+                    <input type="range" data-role="slider" min="-80" max="0" step="1">
+                </div>
+            </template>
+        </div>
+
+        <!-- =======================
+             Übertragung an den ADAU
+             ======================= -->
+        <div class="container">
+            <h1>DSP</h1>
+
+            <label for="maxBoost">Maximaler Boost:</label>
+            <p id="maxBoostValue" class="outputText"></p>
+            <input type="range" id="maxBoost" min="0" max="20" step="1" value="12">
+
+            <p class="hint">
+                Die leiseste gehörte Frequenz ist die Referenz (0 dB). Alle anderen Frequenzen
+                werden um die Differenz angehoben (Bell-Filter 1–8, Q = <span id="qValue"></span>).
+            </p>
+
+            <!-- An/Aus: aktiv = Filter senden, inaktiv = alle 8 Filter auf Bypass -->
+            <button id="dspToggle" class="bypass-btn dsp-toggle">An DSP senden: Aus</button>
+            <p id="outputDsp" class="outputText"></p>
+        </div>
+
+    </div> <!-- Ende container-wrapper -->
+
+    <script src="hoertest.js"></script>
+</body>
+
+</html>

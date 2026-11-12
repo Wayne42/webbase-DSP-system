@@ -23,6 +23,7 @@ extern WebServer httpServer;
 
 void setupWebSocketServer(void);
 void setupHTTPWebServer(void);
+void serveFile(const char *path, const char *contentType);
 void handleRootHTML();
 void handleRootCSS();
 void handleRootJS();
