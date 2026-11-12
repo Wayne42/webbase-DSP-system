@@ -3,3 +3,6 @@
 .vscode/c_cpp_properties.json
 .vscode/launch.json
 .vscode/ipch
+
+# Ignoriere die geheimen WLAN-Daten
+src/credentials.h
