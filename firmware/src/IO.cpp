@@ -49,140 +49,63 @@ void GlobalData::Filter::setSamplingFreq(float value) { samplingFreq = value; }
 uint16_t GlobalData::Filter::getSlewMode() const { return slewMode; }
 void GlobalData::Filter::setSlewMode(uint16_t value) { slewMode = value; }
 
-uint16_t GlobalData::Filter::getDSPAdressA1Ch1() const { return dspAdressA1Ch1; }
+void GlobalData::Filter::setDSPAddresses(const FilterDSPAddresses &addresses) { dspAddresses = addresses; }
+const FilterDSPAddresses &GlobalData::Filter::getDSPAddresses() const { return dspAddresses; }
+bool GlobalData::Filter::hasDSPAddresses() const { return dspAddresses.isAssigned(); }
 
-uint16_t GlobalData::Filter::getDSPAdressA2Ch1() const { return dspAdressA2Ch1; }
+uint8_t GlobalData::Filter::getParameterCount() const { return FILTER_PARAMETER_COUNT; }
 
-uint16_t GlobalData::Filter::getDSPAdressB0Ch1() const { return dspAdressB0Ch1; }
-
-uint16_t GlobalData::Filter::getDSPAdressB1Ch1() const { return dspAdressB1Ch1; }
-
-uint16_t GlobalData::Filter::getDSPAdressB2Ch1() const { return dspAdressB2Ch1; }
-
-uint16_t GlobalData::Filter::getDSPAdressSlewModeCh1() const { return dspAdressSlewMCh1; }
-
-uint16_t GlobalData::Filter::getDSPAdressA1Ch2() const { return dspAdressA1Ch2; }
-
-uint16_t GlobalData::Filter::getDSPAdressA2Ch2() const { return dspAdressA2Ch2; }
-
-uint16_t GlobalData::Filter::getDSPAdressB0Ch2() const { return dspAdressB0Ch2; }
-
-uint16_t GlobalData::Filter::getDSPAdressB1Ch2() const { return dspAdressB1Ch2; }
-
-uint16_t GlobalData::Filter::getDSPAdressB2Ch2() const { return dspAdressB2Ch2; }
-
-uint16_t GlobalData::Filter::getDSPAdressSlewModeCh2() const { return dspAdressSlewMCh2; }
-
-uint8_t GlobalData::Filter::getParameterCount() const { return parameterCount; }
-
-void GlobalData::Filter::writeSafeloadRegister()
+// Schreibt die übergebenen Koeffizienten per Safeload nacheinander auf Ch1 und Ch2
+void GlobalData::Filter::writeCoefficientsSafeload(double b2Value, double b1Value, double b0Value, double a2Value, double a1Value)
 {
+    if (!hasDSPAddresses())
+    {
+        Serial.println("Filter hat keine DSP-Adressen (DSP_ADDR_UNASSIGNED) -> nichts geschrieben");
+        return;
+    }
+
     auto *safeload = globalData->getSafeloadPtr();
 
     if (safeload == nullptr)
     {
-        Serial.println("Safeloadptr is Null GlobalData::Filter::writeSafeLoadRegister()");
+        Serial.println("Safeloadptr is Null GlobalData::Filter::writeCoefficientsSafeload()");
         return;
     }
 
-    while (!safeload->checkSafeloadAudioFrameOver())
+    const uint16_t startAddresses[] = {dspAddresses.b2Ch1, dspAddresses.b2Ch2}; // Ch1, Ch2
+
+    for (uint16_t startAddress : startAddresses)
     {
-        // bad praticese // Wait until the current audio frame is complete before writing to safeload
-        delayMicroseconds(1);
+        while (!safeload->checkSafeloadAudioFrameOver())
+        {
+            // bad praticese // Wait until the current audio frame is complete before writing to safeload
+            delayMicroseconds(1);
+        }
+
+        //  Daten schreiben in die Safeload Register spätere Adressen für Data aufsteigend
+        dspWriteRegister_8_24(safeload->getDSPAdressSafeloadData0(), static_cast<float>(b2Value));
+        dspWriteRegister_8_24(safeload->getDSPAdressSafeloadData1(), static_cast<float>(b1Value));
+        dspWriteRegister_8_24(safeload->getDSPAdressSafeloadData2(), static_cast<float>(b0Value));
+        dspWriteRegister_8_24(safeload->getDSPAdressSafeloadData3(), static_cast<float>(a2Value));
+        dspWriteRegister_8_24(safeload->getDSPAdressSafeloadData4(), static_cast<float>(a1Value));
+
+        // Erste Adresse übergeben wird dann intern hochgezählt bis a1 liegen hintereinander die Adressen
+        dspWriteSafeloadAdressRegister(startAddress);
+        // Write Number Register With Anzahl der geschrieben Daten
+        dspWriteRegisterFixPoint(safeload->getDSPAdressSafeloadNumber(), FILTER_PARAMETER_COUNT);
     }
-    // Write Filter Ch1
-    // Write Slew First
-
-    // dspWriteRegisterFixPoint(dspAdressSlewMCh1, slewMode);
-
-    //  Daten schreiben in die Safeload Register spätere Adressen für Data aufsteigend
-    dspWriteRegister_8_24(safeload->getDSPAdressSafeloadData0(), static_cast<float>(b2));
-    dspWriteRegister_8_24(safeload->getDSPAdressSafeloadData1(), static_cast<float>(b1));
-    dspWriteRegister_8_24(safeload->getDSPAdressSafeloadData2(), static_cast<float>(b0));
-    dspWriteRegister_8_24(safeload->getDSPAdressSafeloadData3(), static_cast<float>(a2));
-    dspWriteRegister_8_24(safeload->getDSPAdressSafeloadData4(), static_cast<float>(a1));
-
-    // Erste Adresse übergeben wird dann intern hochgezählt bis a2 liegen hintereinander die Adressen
-    dspWriteSafeloadAdressRegister(dspAdressB2Ch1);
-    // Write Number Register With Anzahl der geschrieben Daten
-    dspWriteRegisterFixPoint(safeload->getDSPAdressSafeloadNumber(), parameterCount);
-
-    while (!safeload->checkSafeloadAudioFrameOver())
-    {
-        // bad praticese // Wait until the current audio frame is complete before writing to safeload
-        delayMicroseconds(1);
-    }
-
-    // Write Filter Ch2
-
-    // dspWriteRegisterFixPoint(dspAdressSlewMCh2, slewMode);
-
-    //  Daten schreiben in die Safeload Register spätere Adressen für Data aufsteigend
-    dspWriteRegister_8_24(safeload->getDSPAdressSafeloadData0(), b2);
-    dspWriteRegister_8_24(safeload->getDSPAdressSafeloadData1(), b1);
-    dspWriteRegister_8_24(safeload->getDSPAdressSafeloadData2(), b0);
-    dspWriteRegister_8_24(safeload->getDSPAdressSafeloadData3(), a2);
-    dspWriteRegister_8_24(safeload->getDSPAdressSafeloadData4(), a1);
-
-    // Erste Adresse übergeben wird dann intern hochgezählt bis a2 liegen hintereinander die Adressen
-    dspWriteSafeloadAdressRegister(dspAdressB2Ch2);
-    // Write Number Register With Anzahl der geschrieben Daten
-    dspWriteRegisterFixPoint(safeload->getDSPAdressSafeloadNumber(), parameterCount);
 }
 
+// Schreibt die berechneten Koeffizienten
+void GlobalData::Filter::writeSafeloadRegister()
+{
+    writeCoefficientsSafeload(b2, b1, b0, a2, a1);
+}
+
+// Bypass: alle Koeffizienten 0 außer B0 = 1 (Durchgang)
 void GlobalData::Filter::writeBypassedSafeloadRegister()
 {
-    auto *safeload = globalData->getSafeloadPtr();
-
-    if (safeload == nullptr)
-    {
-        Serial.println("Safeloadptr is Null GlobalData::Mute::writeBypassedSafeLoadRegisterData()");
-        return;
-    }
-
-    while (!safeload->checkSafeloadAudioFrameOver())
-    {
-        // bad praticese // Wait until the current audio frame is complete before writing to safeload
-        delayMicroseconds(1);
-    }
-    // Write Filter Ch1
-    // Write Slew First
-
-    // dspWriteRegisterFixPoint(dspAdressSlewMCh1, slewMode);
-
-    //  Daten schreiben in die Safeload Register spätere Adressen für Data aufsteigend
-    dspWriteRegister_8_24(safeload->getDSPAdressSafeloadData0(), 0);
-    dspWriteRegister_8_24(safeload->getDSPAdressSafeloadData1(), 0);
-    dspWriteRegister_8_24(safeload->getDSPAdressSafeloadData2(), 1);
-    dspWriteRegister_8_24(safeload->getDSPAdressSafeloadData3(), 0);
-    dspWriteRegister_8_24(safeload->getDSPAdressSafeloadData4(), 0);
-
-    // Erste Adresse übergeben wird dann intern hochgezählt bis a2 liegen hintereinander die Adressen
-    dspWriteSafeloadAdressRegister(dspAdressB2Ch1);
-    // Write Number Register With Anzahl der geschrieben Daten
-    dspWriteRegisterFixPoint(safeload->getDSPAdressSafeloadNumber(), parameterCount);
-
-    while (!safeload->checkSafeloadAudioFrameOver())
-    {
-        // bad praticese // Wait until the current audio frame is complete before writing to safeload
-        delayMicroseconds(1);
-    }
-
-    // Write Filter Ch2
-
-    // dspWriteRegisterFixPoint(dspAdressSlewMCh2, slewMode);
-
-    //  Daten schreiben in die Safeload Register spätere Adressen für Data aufsteigend
-    dspWriteRegister_8_24(safeload->getDSPAdressSafeloadData0(), 0);
-    dspWriteRegister_8_24(safeload->getDSPAdressSafeloadData1(), 0);
-    dspWriteRegister_8_24(safeload->getDSPAdressSafeloadData2(), 1);
-    dspWriteRegister_8_24(safeload->getDSPAdressSafeloadData3(), 0);
-    dspWriteRegister_8_24(safeload->getDSPAdressSafeloadData4(), 0);
-
-    // Erste Adresse übergeben wird dann intern hochgezählt bis a2 liegen hintereinander die Adressen
-    dspWriteSafeloadAdressRegister(dspAdressB2Ch2);
-    // Write Number Register With Anzahl der geschrieben Daten
-    dspWriteRegisterFixPoint(safeload->getDSPAdressSafeloadNumber(), parameterCount);
+    writeCoefficientsSafeload(0.0, 0.0, 1.0, 0.0, 0.0);
 }
 
 // Meter Implementierungen
@@ -376,59 +299,7 @@ void GlobalData::Gain::writeSafeloadRegister()
 
 // Konstruktor Implementierung
 GlobalData::GlobalData()
-    : filter1(
-          DSPAddresses::Ch1_Filter1_B2,
-          DSPAddresses::Ch1_Filter1_B1,
-          DSPAddresses::Ch1_Filter1_B0,
-          DSPAddresses::Ch1_Filter1_A2,
-          DSPAddresses::Ch1_Filter1_A1,
-          DSPAddresses::Ch1_Filter1_SlewMode,
-          DSPAddresses::Ch2_Filter1_B2,
-          DSPAddresses::Ch2_Filter1_B1,
-          DSPAddresses::Ch2_Filter1_B0,
-          DSPAddresses::Ch2_Filter1_A2,
-          DSPAddresses::Ch2_Filter1_A1,
-          DSPAddresses::Ch2_Filter1_SlewMode),
-      filter2(
-          DSPAddresses::Ch1_Filter2_B2,
-          DSPAddresses::Ch1_Filter2_B1,
-          DSPAddresses::Ch1_Filter2_B0,
-          DSPAddresses::Ch1_Filter2_A2,
-          DSPAddresses::Ch1_Filter2_A1,
-          DSPAddresses::Ch1_Filter2_SlewMode,
-          DSPAddresses::Ch2_Filter2_B2,
-          DSPAddresses::Ch2_Filter2_B1,
-          DSPAddresses::Ch2_Filter2_B0,
-          DSPAddresses::Ch2_Filter2_A2,
-          DSPAddresses::Ch2_Filter2_A1,
-          DSPAddresses::Ch2_Filter2_SlewMode),
-      filter3(
-          DSPAddresses::Ch1_Filter3_B2,
-          DSPAddresses::Ch1_Filter3_B1,
-          DSPAddresses::Ch1_Filter3_B0,
-          DSPAddresses::Ch1_Filter3_A2,
-          DSPAddresses::Ch1_Filter3_A1,
-          DSPAddresses::Ch1_Filter3_SlewMode,
-          DSPAddresses::Ch2_Filter3_B2,
-          DSPAddresses::Ch2_Filter3_B1,
-          DSPAddresses::Ch2_Filter3_B0,
-          DSPAddresses::Ch2_Filter3_A2,
-          DSPAddresses::Ch2_Filter3_A1,
-          DSPAddresses::Ch2_Filter3_SlewMode),
-      filter4(
-          DSPAddresses::Ch1_Filter4_B2,
-          DSPAddresses::Ch1_Filter4_B1,
-          DSPAddresses::Ch1_Filter4_B0,
-          DSPAddresses::Ch1_Filter4_A2,
-          DSPAddresses::Ch1_Filter4_A1,
-          DSPAddresses::Ch1_Filter4_SlewMode,
-          DSPAddresses::Ch2_Filter4_B2,
-          DSPAddresses::Ch2_Filter4_B1,
-          DSPAddresses::Ch2_Filter4_B0,
-          DSPAddresses::Ch2_Filter4_A2,
-          DSPAddresses::Ch2_Filter4_A1,
-          DSPAddresses::Ch2_Filter4_SlewMode),
-      mute1(
+    : mute1(
           DSPAddresses::Ch1_Mute,
           DSPAddresses::Ch1_Mute_SlewMode,
           DSPAddresses::Ch2_Mute,
@@ -455,6 +326,11 @@ GlobalData::GlobalData()
           DSPAddresses::Ch1_MeterL,
           DSPAddresses::Ch2_MeterR)
 {
+    // DSP-Adressen aus der Tabelle in DSPSignals.h den Filtern zuweisen
+    for (uint8_t i = 0; i < NUM_FILTERS; i++)
+    {
+        filters[i].setDSPAddresses(DSPAddresses::Filters[i]);
+    }
 }
 
 // Singleton und Objektzugriff Implementierungen
@@ -464,24 +340,13 @@ GlobalData *GlobalData::getInstance()
     return &instance;
 }
 
-GlobalData::Filter *GlobalData::getFilter1Ptr()
+GlobalData::Filter *GlobalData::getFilterPtr(uint8_t index)
 {
-    return &filter1;
-}
-
-GlobalData::Filter *GlobalData::getFilter2Ptr()
-{
-    return &filter2;
-}
-
-GlobalData::Filter *GlobalData::getFilter3Ptr()
-{
-    return &filter3;
-}
-
-GlobalData::Filter *GlobalData::getFilter4Ptr()
-{
-    return &filter4;
+    if (index >= NUM_FILTERS)
+    {
+        return nullptr;
+    }
+    return &filters[index];
 }
 
 GlobalData::Meter *GlobalData::getMeterPtr()

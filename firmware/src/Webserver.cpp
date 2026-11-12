@@ -29,14 +29,15 @@ void setupHTTPWebServer(void)
     httpServer.on("/app.js", HTTP_GET, handleRootJS);                // Route for the JS file GET request
     httpServer.onNotFound(handleNotFound);                           // Route for handling 404 errors (page not found)
     httpServer.on("/mute", HTTP_POST, handleMute);                   // Route for handling POST requests to "/messages" --> Message from Client to Server
-    httpServer.on("/filter1", HTTP_POST, handleFilter1);             // Route for handling POST requests to "/filter1" --> Message from Client to Server
-    httpServer.on("/bypassFilter1", HTTP_POST, handleFilter1Bypass); //  Route for handling POST requests to "/bypassFilter1" --> Message from Client to Server
-    httpServer.on("/filter2", HTTP_POST, handleFilter2);             // Route for handling POST requests to "/filter2" --> Message from Client to Server
-    httpServer.on("/bypassFilter2", HTTP_POST, handleFilter2Bypass); //  Route for handling POST requests to "/bypassFilter2" --> Message from Client to Server
-    httpServer.on("/filter3", HTTP_POST, handleFilter3);             // Route for handling POST requests to "/filter3" --> Message from Client to Server
-    httpServer.on("/bypassFilter3", HTTP_POST, handleFilter3Bypass); //  Route for handling POST requests to "/bypassFilter3" --> Message from Client to Server
-    httpServer.on("/filter4", HTTP_POST, handleFilter4);             // Route for handling POST requests to "/filter4" --> Message from Client to Server
-    httpServer.on("/bypassFilter4", HTTP_POST, handleFilter4Bypass); //  Route for handling POST requests to "/bypassFilter4" --> Message from Client to Server
+    // Routes for all filters: /filter1 ... /filterN and /bypassFilter1 ... /bypassFilterN
+    for (uint8_t i = 0; i < NUM_FILTERS; i++)
+    {
+        const String filterNumber = String(i + 1);
+        httpServer.on("/filter" + filterNumber, HTTP_POST, [i]()
+                      { handleFilter(i); }); // POST from Client: freqN, gainN, qN
+        httpServer.on("/bypassFilter" + filterNumber, HTTP_POST, [i]()
+                      { handleFilterBypass(i); }); // POST from Client: bypassN
+    }
     httpServer.on("/preGain", HTTP_POST, handlePreGain);
     httpServer.on("/postGain", HTTP_POST, handlePostGain);
 
@@ -205,332 +206,82 @@ void handleMute()
     }
 }
 
-// Handle POST requests to "/filter1" and update the filter values in the global data class
-void handleFilter1()
+// Response text with the current filter values
+static String filterValuesText(const GlobalData::Filter &filter)
 {
-    if (httpServer.hasArg("freq1") && httpServer.hasArg("gain1") && httpServer.hasArg("q1")) // check if HTTP Body has Data
-    {
-        // Get the POST body (raw data)
-        String postDataFreq = httpServer.arg("freq1");
-        String postDataGain = httpServer.arg("gain1");
-        String postDataQ = httpServer.arg("q1");
-
-        // Debug Prints
-        // Serial.println("Data from Filter1 Gain: " + postDataGain); // Print the received data for debugging
-        // Serial.println("Data from Filter1 Freq: " + postDataFreq); // Print the received data for debugging
-        // Serial.println("Data from Filter1 Q: " + postDataQ);       // Print the received data for debugging
-
-        // Convert Strings
-        float websiteDataGain = postDataGain.toFloat(); // Convert the gain string to float
-        float websiteDataFreq = postDataFreq.toFloat(); // Convert the frequency string to float
-        float websiteDataQ = postDataQ.toFloat();       // Convert the Q string to float
-
-        // Write the values to the global data class
-
-        auto *filter1 = globalData->getFilter1Ptr(); // Pointer to the filter struct
-
-        if (filter1 != nullptr) // Check if the pointer is not null
-        {
-            filter1->setGain(websiteDataGain); // Set the gain value in the global data class
-            filter1->setFreq(websiteDataFreq); // Set the freq value in the global data class
-            filter1->setQ(websiteDataQ);       //  Set the q value in the global data class
-            filter1->setHasChanged(true);      // Set the Flag
-            httpServer.send(200, "text/plain", "Frequenz: " + String(filter1->getFreq()) + " Gain: " + String(filter1->getGain()) + " Q: " + String(filter1->getQ()));
-        }
-        else
-        {
-            httpServer.send(500, "text/plain", "Fehler: Filter1 pointer ist null");
-            Serial.println("Fail: Filter1-Pointer is null form handle Filter1 Bypass"); // Print error message if pointer is null
-        }
-    }
-    else
-    {
-        httpServer.send(400, "text/plain", "Fehler: Argumente für Filter1 fehlt");
-        Serial.println("Fail: Website Post Data für Filter1 fehlt ");
-    }
+    return "Frequenz: " + String(filter.getFreq()) + " Gain: " + String(filter.getGain()) + " Q: " + String(filter.getQ());
 }
 
-void handleFilter1Bypass()
+// Handle POST requests to "/filterN" and update the filter values in the global data class
+// index is 0-based, the website uses 1-based numbers (freq1, gain1, q1 ...)
+void handleFilter(uint8_t index)
 {
-    if (httpServer.hasArg("bypass1"))
+    const String filterNumber = String(index + 1);
+    const String argFreq = "freq" + filterNumber;
+    const String argGain = "gain" + filterNumber;
+    const String argQ = "q" + filterNumber;
+
+    if (!(httpServer.hasArg(argFreq) && httpServer.hasArg(argGain) && httpServer.hasArg(argQ))) // check if HTTP Body has Data
     {
-        String postData = httpServer.arg("bypass1");
-
-        // Convert String to float
-        uint8_t websiteDataBypass1 = static_cast<uint8_t>(postData.toInt());
-
-        // Flag Setzten und Daten schreiben in die Class
-        auto *filter1 = globalData->getFilter1Ptr(); // Pointer to the Filter class
-
-        if (filter1 != nullptr) // Check if the pointer is not null
-        {
-            filter1->setBypass(websiteDataBypass1); // Set the Filter values in the global data class
-            filter1->setHasChangedBypassed(true);   // Set the flag for the Filter
-
-            if (filter1->getBypass() == 1)
-            {
-                httpServer.send(200, "text/plain", "Filter Bypassed");
-            }
-            else if (filter1->getBypass() == 0)
-            {
-                httpServer.send(200, "text/plain", "Frequenz: " + String(filter1->getFreq()) + " Gain: " + String(filter1->getGain()) + " Q: " + String(filter1->getQ()));
-            }
-        }
-        else
-        {
-            httpServer.send(500, "text/plain", "Fehler: Filter1 pointer ist null");
-            Serial.println("Fail: Filter1-Pointer is null form handle Filter1 Bypass"); // Print error message if pointer is null
-        }
+        httpServer.send(400, "text/plain", "Fehler: Argumente für Filter" + filterNumber + " fehlen");
+        Serial.println("Fail: Website Post Data für Filter" + filterNumber + " fehlt ");
+        return;
     }
-    else
+
+    auto *filter = globalData->getFilterPtr(index); // Pointer to the filter class
+
+    if (filter == nullptr) // Check if the pointer is not null
     {
-        httpServer.send(400, "text/plain", "Fehler: Argument bypassed Filter 1 fehlt");
+        httpServer.send(500, "text/plain", "Fehler: Filter" + filterNumber + " pointer ist null");
+        Serial.println("Fail: Filter" + filterNumber + "-Pointer is null form handleFilter");
+        return;
     }
+
+    // Convert Strings and write the values to the global data class
+    filter->setFreq(httpServer.arg(argFreq).toFloat());
+    filter->setGain(httpServer.arg(argGain).toFloat());
+    filter->setQ(httpServer.arg(argQ).toFloat());
+    filter->setHasChanged(true); // Set the Flag
+
+    if (!filter->hasDSPAddresses())
+    {
+        httpServer.send(200, "text/plain", filterValuesText(*filter) + " (Filter" + filterNumber + " hat noch keine DSP-Adressen)");
+        return;
+    }
+    httpServer.send(200, "text/plain", filterValuesText(*filter));
 }
 
-void handleFilter2()
+// Handle POST requests to "/bypassFilterN"
+void handleFilterBypass(uint8_t index)
 {
-    if (httpServer.hasArg("freq2") && httpServer.hasArg("gain2") && httpServer.hasArg("q2")) // check if HTTP Body has Data
+    const String filterNumber = String(index + 1);
+    const String argBypass = "bypass" + filterNumber;
+
+    if (!httpServer.hasArg(argBypass))
     {
-        // Get the POST body (raw data)
-        String postDataFreq = httpServer.arg("freq2");
-        String postDataGain = httpServer.arg("gain2");
-        String postDataQ = httpServer.arg("q2");
+        httpServer.send(400, "text/plain", "Fehler: Argument bypassed Filter " + filterNumber + " fehlt");
+        return;
+    }
 
-        // Debug Prints
-        // Serial.println("Data from Filter1 Gain: " + postDataGain); // Print the received data for debugging
-        // Serial.println("Data from Filter1 Freq: " + postDataFreq); // Print the received data for debugging
-        // Serial.println("Data from Filter1 Q: " + postDataQ);       // Print the received data for debugging
+    auto *filter = globalData->getFilterPtr(index); // Pointer to the Filter class
 
-        // Convert Strings
-        float websiteDataGain = postDataGain.toFloat(); // Convert the gain string to float
-        float websiteDataFreq = postDataFreq.toFloat(); // Convert the frequency string to float
-        float websiteDataQ = postDataQ.toFloat();       // Convert the Q string to float
+    if (filter == nullptr) // Check if the pointer is not null
+    {
+        httpServer.send(500, "text/plain", "Fehler: Filter" + filterNumber + " pointer ist null");
+        Serial.println("Fail: Filter" + filterNumber + "-Pointer is null form handleFilterBypass");
+        return;
+    }
 
-        // Write the values to the global data class
+    filter->setBypass(static_cast<uint8_t>(httpServer.arg(argBypass).toInt())); // Set the Filter values in the global data class
+    filter->setHasChangedBypassed(true);                                       // Set the flag for the Filter
 
-        auto *filter2 = globalData->getFilter2Ptr(); // Pointer to the filter struct
-
-        if (filter2 != nullptr) // Check if the pointer is not null
-        {
-            filter2->setGain(websiteDataGain); // Set the gain value in the global data class
-            filter2->setFreq(websiteDataFreq); // Set the freq value in the global data class
-            filter2->setQ(websiteDataQ);       //  Set the q value in the global data class
-            filter2->setHasChanged(true);      // Set the Flag
-            httpServer.send(200, "text/plain", "Frequenz: " + String(filter2->getFreq()) + " Gain: " + String(filter2->getGain()) + " Q: " + String(filter2->getQ()));
-        }
-        else
-        {
-            httpServer.send(500, "text/plain", "Fehler: Filter2 pointer ist null");
-            Serial.println("Fail: Filter2-Pointer is null form handle Filter2 Bypass"); // Print error message if pointer is null
-        }
+    if (filter->getBypass() == 1)
+    {
+        httpServer.send(200, "text/plain", "Filter Bypassed");
     }
     else
     {
-        httpServer.send(400, "text/plain", "Fehler: Website Post Data für Filter2 fehlt");
-        Serial.println("Fail: Website Post Data für Filter2 fehlt ");
-    }
-}
-
-void handleFilter2Bypass()
-{
-    if (httpServer.hasArg("bypass2"))
-    {
-        String postData = httpServer.arg("bypass2");
-
-        // Convert String to float
-        uint8_t websiteDataBypass2 = static_cast<uint8_t>(postData.toInt());
-
-        // Flag Setzten und Daten schreiben in die Class
-        auto *filter2 = globalData->getFilter2Ptr(); // Pointer to the Filter class
-
-        if (filter2 != nullptr) // Check if the pointer is not null
-        {
-            filter2->setBypass(websiteDataBypass2); // Set the Filter values in the global data class
-            filter2->setHasChangedBypassed(true);   // Set the flag for the Filter
-
-            if (filter2->getBypass() == 1)
-            {
-                httpServer.send(200, "text/plain", "Filter Bypassed");
-            }
-            else if (filter2->getBypass() == 0)
-            {
-                httpServer.send(200, "text/plain", "Frequenz: " + String(filter2->getFreq()) + " Gain: " + String(filter2->getGain()) + " Q: " + String(filter2->getQ()));
-            }
-        }
-        else
-        {
-            httpServer.send(500, "text/plain", "Fehler: Filter2 pointer ist null");
-            Serial.println("Fail: Filter2-Pointer is null form handle Filter2 Bypass"); // Print error message if pointer is null
-        }
-    }
-    else
-    {
-        httpServer.send(400, "text/plain", "Fehler: Argument bypassed Filter 2 fehlt");
-    }
-}
-
-void handleFilter3()
-{
-    if (httpServer.hasArg("freq3") && httpServer.hasArg("gain3") && httpServer.hasArg("q3")) // check if HTTP Body has Data
-    {
-        // Get the POST body (raw data)
-        String postDataFreq = httpServer.arg("freq3");
-        String postDataGain = httpServer.arg("gain3");
-        String postDataQ = httpServer.arg("q3");
-
-        // Debug Prints
-        // Serial.println("Data from Filter1 Gain: " + postDataGain); // Print the received data for debugging
-        // Serial.println("Data from Filter1 Freq: " + postDataFreq); // Print the received data for debugging
-        // Serial.println("Data from Filter1 Q: " + postDataQ);       // Print the received data for debugging
-
-        // Convert Strings
-        float websiteDataGain = postDataGain.toFloat(); // Convert the gain string to float
-        float websiteDataFreq = postDataFreq.toFloat(); // Convert the frequency string to float
-        float websiteDataQ = postDataQ.toFloat();       // Convert the Q string to float
-
-        // Write the values to the global data class
-
-        auto *filter3 = globalData->getFilter3Ptr(); // Pointer to the filter struct
-
-        if (filter3 != nullptr) // Check if the pointer is not null
-        {
-            filter3->setGain(websiteDataGain); // Set the gain value in the global data class
-            filter3->setFreq(websiteDataFreq); // Set the freq value in the global data class
-            filter3->setQ(websiteDataQ);       //  Set the q value in the global data class
-            filter3->setHasChanged(true);      // Set the Flag
-            httpServer.send(200, "text/plain", "Frequenz: " + String(filter3->getFreq()) + " Gain: " + String(filter3->getGain()) + " Q: " + String(filter3->getQ()));
-        }
-        else
-        {
-            httpServer.send(500, "text/plain", "Fehler: Filter3 pointer ist null");
-            Serial.println("Fail: Filter3-Pointer is null form handle Filter3 Bypass"); // Print error message if pointer is null
-        }
-    }
-    else
-    {
-        httpServer.send(400, "text/plain", "Fehler: Website Post Data für Filter3 fehlt");
-        Serial.println("Fail: Website Post Data für Filter3 fehlt ");
-    }
-}
-
-void handleFilter3Bypass()
-{
-    if (httpServer.hasArg("bypass3"))
-    {
-        String postData = httpServer.arg("bypass3");
-
-        // Convert String to float
-        uint8_t websiteDataBypass3 = static_cast<uint8_t>(postData.toInt());
-
-        // Flag Setzten und Daten schreiben in die Class
-        auto *filter3 = globalData->getFilter3Ptr(); // Pointer to the Filter class
-
-        if (filter3 != nullptr) // Check if the pointer is not null
-        {
-            filter3->setBypass(websiteDataBypass3); // Set the Filter values in the global data class
-            filter3->setHasChangedBypassed(true);   // Set the flag for the Filter
-
-            if (filter3->getBypass() == 1)
-            {
-                httpServer.send(200, "text/plain", "Filter Bypassed");
-            }
-            else if (filter3->getBypass() == 0)
-            {
-                httpServer.send(200, "text/plain", "Frequenz: " + String(filter3->getFreq()) + " Gain: " + String(filter3->getGain()) + " Q: " + String(filter3->getQ()));
-            }
-        }
-        else
-        {
-            httpServer.send(500, "text/plain", "Fehler: Filter3 pointer ist null");
-            Serial.println("Fail: Filter3-Pointer is null form handle Filter3 Bypass"); // Print error message if pointer is null
-        }
-    }
-    else
-    {
-        httpServer.send(400, "text/plain", "Fehler: Argument bypassed Filter 3 fehlt");
-    }
-}
-
-void handleFilter4()
-{
-    if (httpServer.hasArg("freq4") && httpServer.hasArg("gain4") && httpServer.hasArg("q4")) // check if HTTP Body has Data
-    {
-        // Get the POST body (raw data)
-        String postDataFreq = httpServer.arg("freq4");
-        String postDataGain = httpServer.arg("gain4");
-        String postDataQ = httpServer.arg("q4");
-
-        // Debug Prints
-        // Serial.println("Data from Filter1 Gain: " + postDataGain); // Print the received data for debugging
-        // Serial.println("Data from Filter1 Freq: " + postDataFreq); // Print the received data for debugging
-        // Serial.println("Data from Filter1 Q: " + postDataQ);       // Print the received data for debugging
-
-        // Convert Strings
-        float websiteDataGain = postDataGain.toFloat(); // Convert the gain string to float
-        float websiteDataFreq = postDataFreq.toFloat(); // Convert the frequency string to float
-        float websiteDataQ = postDataQ.toFloat();       // Convert the Q string to float
-
-        // Write the values to the global data class
-
-        auto *filter4 = globalData->getFilter4Ptr(); // Pointer to the filter struct
-
-        if (filter4 != nullptr) // Check if the pointer is not null
-        {
-            filter4->setGain(websiteDataGain); // Set the gain value in the global data class
-            filter4->setFreq(websiteDataFreq); // Set the freq value in the global data class
-            filter4->setQ(websiteDataQ);       //  Set the q value in the global data class
-            filter4->setHasChanged(true);      // Set the Flag
-            httpServer.send(200, "text/plain", "Frequenz: " + String(filter4->getFreq()) + " Gain: " + String(filter4->getGain()) + " Q: " + String(filter4->getQ()));
-        }
-        else
-        {
-            httpServer.send(500, "text/plain", "Fehler: Filter4 pointer ist null");
-            Serial.println("Fail: Filter4-Pointer is null form handle Filter4 Bypass"); // Print error message if pointer is null
-        }
-    }
-    else
-    {
-        httpServer.send(400, "text/plain", "Fehler: Website Post Data für Filter4 fehlt");
-        Serial.println("Fail: Website Post Data für Filter4 fehlt ");
-    }
-}
-
-void handleFilter4Bypass()
-{
-    if (httpServer.hasArg("bypass4"))
-    {
-        String postData = httpServer.arg("bypass4");
-
-        // Convert String to float
-        uint8_t websiteDataBypass4 = static_cast<uint8_t>(postData.toInt());
-
-        // Flag Setzten und Daten schreiben in die Class
-        auto *filter4 = globalData->getFilter4Ptr(); // Pointer to the Filter class
-
-        if (filter4 != nullptr) // Check if the pointer is not null
-        {
-            filter4->setBypass(websiteDataBypass4); // Set the Filter values in the global data class
-            filter4->setHasChangedBypassed(true);   // Set the flag for the Filter
-
-            if (filter4->getBypass() == 1)
-            {
-                httpServer.send(200, "text/plain", "Filter Bypassed");
-            }
-            else if (filter4->getBypass() == 0)
-            {
-                httpServer.send(200, "text/plain", "Frequenz: " + String(filter4->getFreq()) + " Gain: " + String(filter4->getGain()) + " Q: " + String(filter4->getQ()));
-            }
-        }
-        else
-        {
-            httpServer.send(500, "text/plain", "Fehler: Filter4 pointer ist null");
-            Serial.println("Fail: Filter4-Pointer is null form handle Filter4 Bypass"); // Print error message if pointer is null
-        }
-    }
-    else
-    {
-        httpServer.send(400, "text/plain", "Fehler: Argument bypassed Filter 4 fehlt");
+        httpServer.send(200, "text/plain", filterValuesText(*filter));
     }
 }
 

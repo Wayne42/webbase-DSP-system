@@ -40,180 +40,19 @@ void handleNewDatafromWebsite()
             // Serverbekommt davon nichts mit
             Serial.println("Ptr_mute1 is null from handleNewDatafromWebsite");
         }
-        // Check Filter1
-        auto *filter1 = globalData->getFilter1Ptr(); // Pointer to filter class
-        if (filter1 != nullptr)
+        // Check all Filters
+        for (uint8_t i = 0; i < NUM_FILTERS; i++)
         {
-            if (filter1->getHasChanged() == true)
+            auto *filter = globalData->getFilterPtr(i); // Pointer to filter class
+            if (filter != nullptr)
             {
-                Serial.println("Filter 1 has changed New Values: Frequenz: " + String(filter1->getFreq()) + " Gain: " + String(filter1->getGain()) + " Q: " + String(filter1->getQ()));
-                calculateFilterCoefficients(*filter1);
-                /*  dspWriteRegisterFixPoint(filter1->getDSPAdressSlewModeCh1(), filter1->getSlewMode());
-                 dspWriteRegister_8_24(filter1->getDSPAdressA1Ch1(), filter1->getA1());
-                 dspWriteRegister_8_24(filter1->getDSPAdressA2Ch1(), filter1->getA2());
-                 dspWriteRegister_8_24(filter1->getDSPAdressB0Ch1(), filter1->getB0());
-                 dspWriteRegister_8_24(filter1->getDSPAdressB1Ch1(), filter1->getB1());
-                 dspWriteRegister_8_24(filter1->getDSPAdressB2Ch1(), filter1->getB2());
-                 dspWriteRegisterFixPoint(filter1->getDSPAdressSlewModeCh2(), filter1->getSlewMode());
-                 dspWriteRegister_8_24(filter1->getDSPAdressA1Ch2(), filter1->getA1());
-                 dspWriteRegister_8_24(filter1->getDSPAdressA2Ch2(), filter1->getA2());
-                 dspWriteRegister_8_24(filter1->getDSPAdressB0Ch2(), filter1->getB0());
-                 dspWriteRegister_8_24(filter1->getDSPAdressB1Ch2(), filter1->getB1());
-                 dspWriteRegister_8_24(filter1->getDSPAdressB2Ch2(), filter1->getB2()); */
-                filter1->writeSafeloadRegister();
-                filter1->setHasChanged(false);
+                handleFilterUpdate(*filter, i + 1); // Filter-Nummer für die Ausgabe 1-basiert
             }
-            if (filter1->getHasChangedBypassed() == true && filter1->getBypass() == 1)
+            else
             {
-                Serial.println("Bypass 1 has changed New Value: " + String(filter1->getBypass()));
-                // Set all Coeffizents to 0 exepct B0
-                filter1->writeBypassedSafeloadRegister();
-                filter1->setHasChangedBypassed(false);
+                // Serverbekommt davon nichts mit
+                Serial.println("Filter" + String(i + 1) + " Ptr is null from handleNewDatafromWebsite");
             }
-            else if (filter1->getHasChangedBypassed() == true && filter1->getBypass() == 0)
-            {
-                Serial.println("Bypass 1 has changed New Value: " + String(filter1->getBypass()));
-                // Write The Old Coeffizents
-                filter1->writeSafeloadRegister();
-                filter1->setHasChangedBypassed(false);
-            }
-        }
-        else
-        {
-            // Serverbekommt davon nichts mit
-            Serial.println("Filter1 Ptr is null from handleNewDatafromWebsite");
-        }
-
-        // Check Filter2
-        auto *filter2 = globalData->getFilter2Ptr(); // Pointer to filter class
-        if (filter2 != nullptr)
-        {
-            if (filter2->getHasChanged() == true)
-            {
-                Serial.println("Filter 2 has changed New Values: Frequenz: " + String(filter2->getFreq()) + " Gain: " + String(filter2->getGain()) + " Q: " + String(filter2->getQ()));
-                calculateFilterCoefficients(*filter2);
-                /*  dspWriteRegisterFixPoint(filter1->getDSPAdressSlewModeCh1(), filter1->getSlewMode());
-                 dspWriteRegister_8_24(filter1->getDSPAdressA1Ch1(), filter1->getA1());
-                 dspWriteRegister_8_24(filter1->getDSPAdressA2Ch1(), filter1->getA2());
-                 dspWriteRegister_8_24(filter1->getDSPAdressB0Ch1(), filter1->getB0());
-                 dspWriteRegister_8_24(filter1->getDSPAdressB1Ch1(), filter1->getB1());
-                 dspWriteRegister_8_24(filter1->getDSPAdressB2Ch1(), filter1->getB2());
-                 dspWriteRegisterFixPoint(filter1->getDSPAdressSlewModeCh2(), filter1->getSlewMode());
-                 dspWriteRegister_8_24(filter1->getDSPAdressA1Ch2(), filter1->getA1());
-                 dspWriteRegister_8_24(filter1->getDSPAdressA2Ch2(), filter1->getA2());
-                 dspWriteRegister_8_24(filter1->getDSPAdressB0Ch2(), filter1->getB0());
-                 dspWriteRegister_8_24(filter1->getDSPAdressB1Ch2(), filter1->getB1());
-                 dspWriteRegister_8_24(filter1->getDSPAdressB2Ch2(), filter1->getB2()); */
-                filter2->writeSafeloadRegister();
-                filter2->setHasChanged(false);
-            }
-            if (filter2->getHasChangedBypassed() == true && filter2->getBypass() == 1)
-            {
-                Serial.println("Bypass 2 has changed New Value: " + String(filter2->getBypass()));
-                // Set all Coeffizents to 0 exepct B0
-                filter2->writeBypassedSafeloadRegister();
-                filter2->setHasChangedBypassed(false);
-            }
-            else if (filter2->getHasChangedBypassed() == true && filter2->getBypass() == 0)
-            {
-                Serial.println("Bypass 2 has changed New Value: " + String(filter2->getBypass()));
-                // Write The Old Coeffizents
-                filter2->writeSafeloadRegister();
-                filter2->setHasChangedBypassed(false);
-            }
-        }
-        else
-        {
-            // Serverbekommt davon nichts mit
-            Serial.println("Filter2 Ptr is null from handleNewDatafromWebsite");
-        }
-
-        // Check Filter3
-        auto *filter3 = globalData->getFilter3Ptr(); // Pointer to filter class
-        if (filter3 != nullptr)
-        {
-            if (filter3->getHasChanged() == true)
-            {
-                Serial.println("Filter 3 has changed New Values: Frequenz: " + String(filter3->getFreq()) + " Gain: " + String(filter3->getGain()) + " Q: " + String(filter3->getQ()));
-                calculateFilterCoefficients(*filter3);
-                /*  dspWriteRegisterFixPoint(filter1->getDSPAdressSlewModeCh1(), filter1->getSlewMode());
-                 dspWriteRegister_8_24(filter1->getDSPAdressA1Ch1(), filter1->getA1());
-                 dspWriteRegister_8_24(filter1->getDSPAdressA2Ch1(), filter1->getA2());
-                 dspWriteRegister_8_24(filter1->getDSPAdressB0Ch1(), filter1->getB0());
-                 dspWriteRegister_8_24(filter1->getDSPAdressB1Ch1(), filter1->getB1());
-                 dspWriteRegister_8_24(filter1->getDSPAdressB2Ch1(), filter1->getB2());
-                 dspWriteRegisterFixPoint(filter1->getDSPAdressSlewModeCh2(), filter1->getSlewMode());
-                 dspWriteRegister_8_24(filter1->getDSPAdressA1Ch2(), filter1->getA1());
-                 dspWriteRegister_8_24(filter1->getDSPAdressA2Ch2(), filter1->getA2());
-                 dspWriteRegister_8_24(filter1->getDSPAdressB0Ch2(), filter1->getB0());
-                 dspWriteRegister_8_24(filter1->getDSPAdressB1Ch2(), filter1->getB1());
-                 dspWriteRegister_8_24(filter1->getDSPAdressB2Ch2(), filter1->getB2()); */
-                filter3->writeSafeloadRegister();
-                filter3->setHasChanged(false);
-            }
-            if (filter3->getHasChangedBypassed() == true && filter3->getBypass() == 1)
-            {
-                Serial.println("Bypass 3 has changed New Value: " + String(filter3->getBypass()));
-                // Set all Coeffizents to 0 exepct B0
-                filter3->writeBypassedSafeloadRegister();
-                filter3->setHasChangedBypassed(false);
-            }
-            else if (filter3->getHasChangedBypassed() == true && filter3->getBypass() == 0)
-            {
-                Serial.println("Bypass 3 has changed New Value: " + String(filter3->getBypass()));
-                // Write The Old Coeffizents
-                filter3->writeSafeloadRegister();
-                filter3->setHasChangedBypassed(false);
-            }
-        }
-        else
-        {
-            // Serverbekommt davon nichts mit
-            Serial.println("Filter3 Ptr is null from handleNewDatafromWebsite");
-        }
-
-        // Check Filter4
-        auto *filter4 = globalData->getFilter4Ptr(); // Pointer to filter class
-        if (filter4 != nullptr)
-        {
-            if (filter4->getHasChanged() == true)
-            {
-                Serial.println("Filter 4 has changed New Values: Frequenz: " + String(filter4->getFreq()) + " Gain: " + String(filter4->getGain()) + " Q: " + String(filter4->getQ()));
-                calculateFilterCoefficients(*filter4);
-                /*  dspWriteRegisterFixPoint(filter1->getDSPAdressSlewModeCh1(), filter1->getSlewMode());
-                 dspWriteRegister_8_24(filter1->getDSPAdressA1Ch1(), filter1->getA1());
-                 dspWriteRegister_8_24(filter1->getDSPAdressA2Ch1(), filter1->getA2());
-                 dspWriteRegister_8_24(filter1->getDSPAdressB0Ch1(), filter1->getB0());
-                 dspWriteRegister_8_24(filter1->getDSPAdressB1Ch1(), filter1->getB1());
-                 dspWriteRegister_8_24(filter1->getDSPAdressB2Ch1(), filter1->getB2());
-                 dspWriteRegisterFixPoint(filter1->getDSPAdressSlewModeCh2(), filter1->getSlewMode());
-                 dspWriteRegister_8_24(filter1->getDSPAdressA1Ch2(), filter1->getA1());
-                 dspWriteRegister_8_24(filter1->getDSPAdressA2Ch2(), filter1->getA2());
-                 dspWriteRegister_8_24(filter1->getDSPAdressB0Ch2(), filter1->getB0());
-                 dspWriteRegister_8_24(filter1->getDSPAdressB1Ch2(), filter1->getB1());
-                 dspWriteRegister_8_24(filter1->getDSPAdressB2Ch2(), filter1->getB2()); */
-                filter4->writeSafeloadRegister();
-                filter4->setHasChanged(false);
-            }
-            if (filter4->getHasChangedBypassed() == true && filter4->getBypass() == 1)
-            {
-                Serial.println("Bypass 4 has changed New Value: " + String(filter4->getBypass()));
-                // Set all Coeffizents to 0 exepct B0
-                filter4->writeBypassedSafeloadRegister();
-                filter4->setHasChangedBypassed(false);
-            }
-            else if (filter4->getHasChangedBypassed() == true && filter4->getBypass() == 0)
-            {
-                Serial.println("Bypass 4 has changed New Value: " + String(filter4->getBypass()));
-                // Write The Old Coeffizents
-                filter4->writeSafeloadRegister();
-                filter4->setHasChangedBypassed(false);
-            }
-        }
-        else
-        {
-            // Serverbekommt davon nichts mit
-            Serial.println("Filter4 Ptr is null from handleNewDatafromWebsite");
         }
 
         // Check PreGain
@@ -254,6 +93,34 @@ void handleNewDatafromWebsite()
     {
         Serial.println("globalData is null from handleNewDatafromWebsite");
         // Server send fehlt -->
+    }
+}
+
+// Check the flags of one filter and write new coefficients / bypass to the DSP
+void handleFilterUpdate(GlobalData::Filter &filter, uint8_t filterNumber)
+{
+    if (filter.getHasChanged() == true)
+    {
+        Serial.println("Filter " + String(filterNumber) + " has changed New Values: Frequenz: " + String(filter.getFreq()) + " Gain: " + String(filter.getGain()) + " Q: " + String(filter.getQ()));
+        calculateFilterCoefficients(filter);
+        filter.writeSafeloadRegister();
+        filter.setHasChanged(false);
+    }
+
+    if (filter.getHasChangedBypassed() == true)
+    {
+        Serial.println("Bypass " + String(filterNumber) + " has changed New Value: " + String(filter.getBypass()));
+        if (filter.getBypass() == 1)
+        {
+            // Set all Coeffizents to 0 exepct B0
+            filter.writeBypassedSafeloadRegister();
+        }
+        else
+        {
+            // Write The Old Coeffizents
+            filter.writeSafeloadRegister();
+        }
+        filter.setHasChangedBypassed(false);
     }
 }
 

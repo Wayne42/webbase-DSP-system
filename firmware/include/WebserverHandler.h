@@ -28,14 +28,8 @@ void handleRootCSS();
 void handleRootJS();
 void handleNotFound();
 void handleMute();
-void handleFilter1();
-void handleFilter1Bypass();
-void handleFilter2();
-void handleFilter2Bypass();
-void handleFilter3();
-void handleFilter3Bypass();
-void handleFilter4();
-void handleFilter4Bypass();
+void handleFilter(uint8_t index);       // index 0 ... NUM_FILTERS-1
+void handleFilterBypass(uint8_t index); // index 0 ... NUM_FILTERS-1
 void handlePreGain();
 void handlePostGain();
 void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length);

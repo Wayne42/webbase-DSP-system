@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "gui-test",
+      "runtimeExecutable": "powershell",
+      "runtimeArgs": [
+        "-NoProfile",
+        "-ExecutionPolicy", "Bypass",
+        "-File", "C:\\Users\\tosuk\\AppData\\Local\\Temp\\claude\\7ca3143619a7ea02\\5f76b680-fffc-4b96-b75f-86f23ef971ed\\scratchpad\\gui_server.ps1",
+        "-Root", "C:\\Tobi\\Entwicklung\\webbase-DSP-system\\firmware\\data",
+        "-Port", "8765"
+      ],
+      "port": 8765
+    }
+  ]
+}

@@ -93,6 +93,7 @@ function handleChannelLevel(value, textElementId, signalLEDId) {
         updateSignalLed(LED, NaN);
 
     }
+    
 }
 
 // Change LED Color
@@ -163,264 +164,114 @@ document.getElementById('gainPostSend').addEventListener('click', function () {
 
 
 
-// Send Filter 1 Parameters mit Type
+// -------------------------------------
+// Filter
+// -------------------------------------
 
-document.getElementById('filter1send').addEventListener('click', function () {
+// Anzahl der Filter, muss zu NUM_FILTERS in der Firmware (include/IO.h) passen
+const FILTER_COUNT = 8;
 
-    const valueFreq1 = document.getElementById('freq1').value;
-    const valueGain1 = document.getElementById('gain1').value;
-    const valueQ1 = document.getElementById('q1').value;
-    const valueType1 = document.getElementById('typeFilter1').value;
-    //Check eingabevalues
-    const arrayValues = [valueFreq1, valueGain1, valueQ1];
+// Grenzen für die Filterparameter
+const FILTER_LIMITS = {
+    freqMin: 10,
+    freqMax: 24000,
+    gainMin: -45,
+    gainMax: 45
+};
 
-    if (arrayValues.some(val => !isValidNumber(val))) {
-        document.getElementById('outputFilter1').textContent = 'No valid Number (0,5/-3)';
-        return;
+// Erzeugt die Karte für Filter n (1-basiert) aus dem Template und vergibt die IDs
+// IDs wie bisher: freqN, gainN, qN, typeFilterN, bypassFilterN, filterNsend, outputFilterN
+function createFilterCard(template, n) {
+    const card = template.content.firstElementChild.cloneNode(true);
+    const part = role => card.querySelector(`[data-role="${role}"]`);
+
+    part('title').textContent = `Filter ${n}`;
+
+    const ids = {
+        bypass: `bypassFilter${n}`,
+        type: `typeFilter${n}`,
+        freq: `freq${n}`,
+        gain: `gain${n}`,
+        q: `q${n}`,
+        send: `filter${n}send`,
+        output: `outputFilter${n}`
+    };
+    for (const [role, id] of Object.entries(ids)) {
+        part(role).id = id;
     }
+    // Labels mit den Eingabefeldern verknüpfen
+    part('typeLabel').htmlFor = ids.type;
+    part('freqLabel').htmlFor = ids.freq;
+    part('gainLabel').htmlFor = ids.gain;
+    part('qLabel').htmlFor = ids.q;
 
-    if (arrayValues[0] < 10 || arrayValues[0] > 24000 || arrayValues[1] < -45 || arrayValues[1] > 45 || arrayValues[2] <= 0) {
-        document.getElementById('outputFilter1').textContent = 'Frequency range 10 to 24000, Gain range from -45 to 45 and Q greater than 0';
-        return;
-    }
+    return card;
+}
 
-    const arrayNomalizedValues = arrayValues.map(normalizeNumber);
-
-    sendPostRequest('/filter1', {
-
-        freq1: arrayNomalizedValues[0],
-        gain1: arrayNomalizedValues[1],
-        q1: arrayNomalizedValues[2],
-        type1: valueType1
-    }, 'outputFilter1');
-
-    //Felder Leeren
-    document.getElementById('freq1').value = '';
-    document.getElementById('gain1').value = '';
-    document.getElementById('q1').value = '';
-
-    const bypassButton = document.getElementById('bypassFilter1')
-
-    bypassButton.classList.remove('active');
-    bypassButton.textContent = "Bypass";
-
-})
-
-
-// Handle Filter 1 byPass Toggle
-
-document.getElementById('bypassFilter1').addEventListener('click', function () {
-    const button = this;
-
-    // Toggle: Ist der Button bereits "active"?
-    const isBypassed = button.classList.toggle('active'); // toggle fügt/entfernt "active"-Klasse
+// Setzt den Bypass-Button eines Filters auf aktiv/inaktiv
+function setBypassButton(button, isBypassed) {
+    button.classList.toggle('active', isBypassed);
     button.textContent = isBypassed ? "Bypassed" : "Bypass";
+}
 
-    // 1 = Bypass aktiv (active-Klasse gesetzt), 0 = Bypass aus
-    const bypassValue = isBypassed ? 1 : 0;
+// Liest, prüft und sendet die Parameter von Filter n
+function sendFilter(n) {
+    const output = document.getElementById(`outputFilter${n}`);
+    const inputs = ['freq', 'gain', 'q'].map(name => document.getElementById(`${name}${n}`));
+    const rawValues = inputs.map(input => input.value);
 
-    // Debugging
-    // console.log("Bypass Filter 1:", bypassValue);
-
-    sendPostRequest('/bypassFilter1', { bypass1: bypassValue }, 'outputFilter1');
-
-});
-
-
-
-// Send Filter 2 Parameters mit Type
-
-document.getElementById('filter2send').addEventListener('click', function () {
-
-    const valueFreq2 = document.getElementById('freq2').value;
-    const valueGain2 = document.getElementById('gain2').value;
-    const valueQ2 = document.getElementById('q2').value;
-    const valueType2 = document.getElementById('typeFilter2').value;
-    //Check eingabevalues
-    const arrayValues = [valueFreq2, valueGain2, valueQ2];
-
-    if (arrayValues.some(val => !isValidNumber(val))) {
-        document.getElementById('outputFilter2').textContent = 'No valid Number (0,5/-3)';
+    if (rawValues.some(val => !isValidNumber(val))) {
+        output.textContent = 'No valid Number (0,5/-3)';
         return;
     }
 
-    if (arrayValues[0] < 10 || arrayValues[0] > 24000 || arrayValues[1] < -45 || arrayValues[1] > 45 || arrayValues[2] <= 0) {
-        document.getElementById('outputFilter2').textContent = 'Frequency range 10 to 24000, Gain range from -45 to 45 and Q greater than 0';
+    // Erst normalisieren (Komma -> Punkt), dann als Zahl prüfen
+    const normalized = rawValues.map(normalizeNumber);
+    const [freq, gain, q] = normalized.map(parseFloat);
+
+    if (freq < FILTER_LIMITS.freqMin || freq > FILTER_LIMITS.freqMax ||
+        gain < FILTER_LIMITS.gainMin || gain > FILTER_LIMITS.gainMax || q <= 0) {
+        output.textContent = `Frequency range ${FILTER_LIMITS.freqMin} to ${FILTER_LIMITS.freqMax}, ` +
+            `Gain range from ${FILTER_LIMITS.gainMin} to ${FILTER_LIMITS.gainMax} and Q greater than 0`;
         return;
     }
 
-    const arrayNomalizedValues = arrayValues.map(normalizeNumber);
+    sendPostRequest(`/filter${n}`, {
+        [`freq${n}`]: normalized[0],
+        [`gain${n}`]: normalized[1],
+        [`q${n}`]: normalized[2],
+        [`type${n}`]: document.getElementById(`typeFilter${n}`).value
+    }, `outputFilter${n}`);
 
-    sendPostRequest('/filter2', {
+    // Felder leeren
+    inputs.forEach(input => input.value = '');
 
-        freq2: arrayNomalizedValues[0],
-        gain2: arrayNomalizedValues[1],
-        q2: arrayNomalizedValues[2],
-        type2: valueType2
-    }, 'outputFilter2');
+    // Neue Werte heben den Bypass auf
+    setBypassButton(document.getElementById(`bypassFilter${n}`), false);
+}
 
-    //Felder Leeren
-    document.getElementById('freq2').value = '';
-    document.getElementById('gain2').value = '';
-    document.getElementById('q2').value = '';
+// Bypass von Filter n umschalten (1 = Bypass aktiv, 0 = Bypass aus)
+function toggleBypass(n) {
+    const button = document.getElementById(`bypassFilter${n}`);
+    const isBypassed = !button.classList.contains('active');
+    setBypassButton(button, isBypassed);
 
-    const bypassButton = document.getElementById('bypassFilter2')
+    sendPostRequest(`/bypassFilter${n}`, { [`bypass${n}`]: isBypassed ? 1 : 0 }, `outputFilter${n}`);
+}
 
-    bypassButton.classList.remove('active');
-    bypassButton.textContent = "Bypass";
+// Alle Filter-Karten erzeugen und vor dem Post-Filter einfügen
+(() => {
+    const template = document.getElementById('filterTemplate');
+    const postFilterContainer = document.getElementById('postFilterContainer');
 
-})
+    for (let n = 1; n <= FILTER_COUNT; n++) {
+        const card = createFilterCard(template, n);
+        postFilterContainer.before(card);
 
-
-// Handle Filter 2 byPass Toggle
-
-document.getElementById('bypassFilter2').addEventListener('click', function () {
-    const button = this;
-
-    // Toggle: Ist der Button bereits "active"?
-    const isBypassed = button.classList.toggle('active'); // toggle fügt/entfernt "active"-Klasse
-    button.textContent = isBypassed ? "Bypassed" : "Bypass";
-
-    // 1 = Bypass aktiv (active-Klasse gesetzt), 0 = Bypass aus
-    const bypassValue = isBypassed ? 1 : 0;
-
-    // Debugging
-    // console.log("Bypass Filter 2:", bypassValue);
-
-    sendPostRequest('/bypassFilter2', { bypass2: bypassValue }, 'outputFilter2');
-
-});
-
-
-
-// Send Filter 3 Parameters mit Type
-
-document.getElementById('filter3send').addEventListener('click', function () {
-
-    const valueFreq3 = document.getElementById('freq3').value;
-    const valueGain3 = document.getElementById('gain3').value;
-    const valueQ3 = document.getElementById('q3').value;
-    const valueType3 = document.getElementById('typeFilter3').value;
-    //Check eingabevalues
-    const arrayValues = [valueFreq3, valueGain3, valueQ3];
-
-    if (arrayValues.some(val => !isValidNumber(val))) {
-        document.getElementById('outputFilter3').textContent = 'No valid Number (0,5/-3)';
-        return;
+        document.getElementById(`filter${n}send`).addEventListener('click', () => sendFilter(n));
+        document.getElementById(`bypassFilter${n}`).addEventListener('click', () => toggleBypass(n));
     }
-
-    if (arrayValues[0] < 10 || arrayValues[0] > 24000 || arrayValues[1] < -45 || arrayValues[1] > 45 || arrayValues[2] <= 0) {
-        document.getElementById('outputFilter3').textContent = 'Frequency range 10 to 24000, Gain range from -45 to 45 and Q greater than 0';
-        return;
-    }
-
-
-    const arrayNomalizedValues = arrayValues.map(normalizeNumber);
-
-    sendPostRequest('/filter3', {
-
-        freq3: arrayNomalizedValues[0],
-        gain3: arrayNomalizedValues[1],
-        q3: arrayNomalizedValues[2],
-        type3: valueType3
-    }, 'outputFilter3');
-
-    //Felder Leeren
-    document.getElementById('freq3').value = '';
-    document.getElementById('gain3').value = '';
-    document.getElementById('q3').value = '';
-
-    const bypassButton = document.getElementById('bypassFilter3')
-
-    bypassButton.classList.remove('active');
-    bypassButton.textContent = "Bypass";
-
-})
-
-
-// Handle Filter 3 byPass Toggle
-
-document.getElementById('bypassFilter3').addEventListener('click', function () {
-    const button = this;
-
-    // Toggle: Ist der Button bereits "active"?
-    const isBypassed = button.classList.toggle('active'); // toggle fügt/entfernt "active"-Klasse
-    button.textContent = isBypassed ? "Bypassed" : "Bypass";
-
-    // 1 = Bypass aktiv (active-Klasse gesetzt), 0 = Bypass aus
-    const bypassValue = isBypassed ? 1 : 0;
-
-    // Debugging
-    // console.log("Bypass Filter 3:", bypassValue);
-
-    sendPostRequest('/bypassFilter3', { bypass3: bypassValue }, 'outputFilter3');
-
-});
-
-
-
-// Send Filter 4 Parameters mit Type
-
-document.getElementById('filter4send').addEventListener('click', function () {
-
-    const valueFreq4 = document.getElementById('freq4').value;
-    const valueGain4 = document.getElementById('gain4').value;
-    const valueQ4 = document.getElementById('q4').value;
-    const valueType4 = document.getElementById('typeFilter4').value;
-    //Check eingabevalues
-    const arrayValues = [valueFreq4, valueGain4, valueQ4];
-
-    if (arrayValues.some(val => !isValidNumber(val))) {
-        document.getElementById('outputFilter4').textContent = 'No valid Number (0,5/-3)';
-        return;
-    }
-
-    if (arrayValues[0] < 10 || arrayValues[0] > 24000 || arrayValues[1] < -45 || arrayValues[1] > 45 || arrayValues[2] <= 0) {
-        document.getElementById('outputFilter4').textContent = 'Frequency range 10 to 24000, Gain range from -45 to 45 and Q greater than 0';
-        return;
-    }
-
-    const arrayNomalizedValues = arrayValues.map(normalizeNumber);
-
-    sendPostRequest('/filter4', {
-
-        freq4: arrayNomalizedValues[0],
-        gain4: arrayNomalizedValues[1],
-        q4: arrayNomalizedValues[2],
-        type4: valueType4
-    }, 'outputFilter4');
-
-    //Felder Leeren
-    document.getElementById('freq4').value = '';
-    document.getElementById('gain4').value = '';
-    document.getElementById('q4').value = '';
-
-    const bypassButton = document.getElementById('bypassFilter4')
-
-    bypassButton.classList.remove('active');
-    bypassButton.textContent = "Bypass";
-
-})
-
-
-// Handle Filter 4 byPass Toggle
-
-document.getElementById('bypassFilter4').addEventListener('click', function () {
-    const button = this;
-
-    // Toggle: Ist der Button bereits "active"?
-    const isBypassed = button.classList.toggle('active'); // toggle fügt/entfernt "active"-Klasse
-    button.textContent = isBypassed ? "Bypassed" : "Bypass";
-
-    // 1 = Bypass aktiv (active-Klasse gesetzt), 0 = Bypass aus
-    const bypassValue = isBypassed ? 1 : 0;
-
-    // Debugging
-    // console.log("Bypass Filter 1:", bypassValue);
-
-    sendPostRequest('/bypassFilter4', { bypass4: bypassValue }, 'outputFilter4');
-
-});
+})();
 
 
 
