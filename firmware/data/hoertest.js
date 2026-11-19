@@ -15,6 +15,7 @@ const PAUSE_MAX_MS = 2500;
 const FILTER_Q = 1.4;          // ca. 1 Oktave Bandbreite
 const FILTER_TYPE = 'bell';
 const STORAGE_KEY = 'hearingTestThresholds';
+const MAX_BOOST_KEY = 'dsp.hearingMaxBoost';
 
 // Hörschwelle pro Frequenz in dBFS (null = noch nicht gemessen)
 const thresholds = loadThresholds();
@@ -47,6 +48,31 @@ function loadThresholds() {
 function saveThresholds() {
     try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(thresholds));
+    } catch (err) { /* ignorieren */ }
+}
+
+// Gleiche Schlüssel wie app.js ("dsp.filterN"), damit gesendete Filter
+// im Equalizer vorbefüllt sind
+function saveFilterForEqualizer(n, patch) {
+    try {
+        const key = `dsp.filter${n}`;
+        const current = JSON.parse(localStorage.getItem(key)) || {};
+        localStorage.setItem(key, JSON.stringify({ ...current, ...patch }));
+    } catch (err) { /* ignorieren */ }
+}
+
+function loadSetting(key, fallback) {
+    try {
+        const value = localStorage.getItem(key);
+        return value === null ? fallback : value;
+    } catch (err) {
+        return fallback;
+    }
+}
+
+function saveSetting(key, value) {
+    try {
+        localStorage.setItem(key, value);
     } catch (err) { /* ignorieren */ }
 }
 
@@ -366,11 +392,13 @@ async function runSequential(job) {
         return;
     }
     dsp.sending = true;
+    $('outputDsp').dataset.type = 'info';
     try {
         await job();
     } catch (err) {
         console.error(err);
         $('outputDsp').textContent = 'Fehler: ' + err.message;
+        $('outputDsp').dataset.type = 'error';
     } finally {
         dsp.sending = false;
     }
@@ -393,6 +421,13 @@ function sendAllFilters() {
                 [`type${n}`]: FILTER_TYPE
             });
             await postForm(`/bypassFilter${n}`, { [`bypass${n}`]: 0 });
+            saveFilterForEqualizer(n, {
+                type: FILTER_TYPE,
+                freq: String(TEST_FREQUENCIES[i]),
+                gain: gains[i].toFixed(1),
+                q: String(FILTER_Q),
+                bypass: false
+            });
         }
         $('outputDsp').textContent = 'Gesendet: ' + gains.map((g, i) =>
             `${formatFreq(TEST_FREQUENCIES[i])} +${g.toFixed(1)} dB`).join(', ');
@@ -404,6 +439,7 @@ function bypassAllFilters() {
         for (let n = 1; n <= TEST_FREQUENCIES.length; n++) {
             $('outputDsp').textContent = `Bypass Filter ${n} / ${TEST_FREQUENCIES.length} …`;
             await postForm(`/bypassFilter${n}`, { [`bypass${n}`]: 1 });
+            saveFilterForEqualizer(n, { bypass: true });
         }
         $('outputDsp').textContent = 'Alle Filter auf Bypass';
     });
@@ -440,6 +476,7 @@ $('maxBoost').addEventListener('input', () => {
     updateGainLabels();
 });
 $('maxBoost').addEventListener('change', () => {
+    saveSetting(MAX_BOOST_KEY, $('maxBoost').value);
     if (dsp.active) sendAllFilters();
 });
 
@@ -447,6 +484,7 @@ $('dspToggle').addEventListener('click', toggleDsp);
 
 // Initialisierung
 $('qValue').textContent = FILTER_Q;
+$('maxBoost').value = loadSetting(MAX_BOOST_KEY, $('maxBoost').value);
 $('maxBoostValue').textContent = `${$('maxBoost').value} dB`;
 createBandRows();
 setDspButton();

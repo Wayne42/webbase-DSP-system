@@ -4,108 +4,153 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ESP 32 local</title>
-    <!-- Verlinkung zur externen CSS-Datei -->
+    <title>DSP – Equalizer</title>
     <link rel="stylesheet" href="main.css">
 </head>
 
 <body>
-    <!-- Haupt-Wrapper für alle Container (Pre, Filter, Post) -->
-    <div class="container-wrapper">
-
-        <!-- =======================
-             Pre Filter Sektion
-             ======================= -->
-        <div class="container">
-            <div class="filter-header">
-                <h1>Metering</h1>
-                <a href="/hoertest.html" class="page-link">Hörtest</a>
-            </div>
-
-            <!-- Signal-LED-Anzeige -->
-            <label for="signalLedL">Signal:</label>
-            <p id="outputSignalLeds" class="outputText"></p>
-            <div class="led-container">
-                <div class="led-unit">
-                    <p id="channelSignalLedL" class="outputText"></p>
-                    <span id="signalLedL" class="led"></span>
-                    <p id="outputSignalLedL" class="outputText">L</p>
-                </div>
-                <div class="led-unit">
-                    <p id="channelSignalLedR" class="outputText"></p>
-                    <span id="signalLedR" class="led"></span>
-                    <p id="outputSignalLedR" class="outputText">R</p>
-                </div>
-            </div>
-
-            <h1>Pre Filter</h1>
-
-            <!-- Gain-Eingabe -->
-            <label for="gainPreInput">Gain:</label>
-            <input type="range" id="gainPreInput" placeholder="z.B. 0 dB">
-            <button id="gainPreSend">Absenden</button>
-
-            <!-- Ausgabe für Debug-Zwecke -->
-            <p id="outputGainPre" class="outputText"></p>
+    <!-- =======================
+         Hauptnavigation (gleich auf allen Seiten)
+         ======================= -->
+    <header class="topbar">
+        <div class="topbar-inner">
+            <span class="brand">ESP32 DSP</span>
+            <nav class="tabs">
+                <a href="/" class="tab active" aria-current="page">Equalizer</a>
+                <a href="/hoertest.html" class="tab">Hörtest</a>
+            </nav>
+            <span id="connectionStatus" class="conn" title="WebSocket-Verbindung">
+                <span class="conn-dot"></span><span id="outputSignalLeds">Verbinde …</span>
+            </span>
         </div>
 
+        <!-- Sprungnavigation innerhalb der Seite (wird in app.js um Filter 1–8 ergänzt) -->
+        <nav class="subnav" id="subnav">
+            <a href="#sectionMeter" class="chip">Pegel</a>
+            <a href="#sectionPre" class="chip">Pre</a>
+            <!-- Filter-Chips werden hier eingefügt -->
+            <a href="#postFilterContainer" class="chip" id="chipPost">Post</a>
+        </nav>
+    </header>
+
+    <main class="page">
+
         <!-- =======================
-             Filter Sektionen
-             Die Filter 1 ... FILTER_COUNT werden in app.js aus dem
-             Template #filterTemplate erzeugt und hier eingefügt
+             Metering + Pre Gain
              ======================= -->
+        <section class="row">
+            <div class="card" id="sectionMeter">
+                <h2>Eingangspegel</h2>
+                <div class="led-container">
+                    <div class="led-unit">
+                        <span id="signalLedL" class="led"></span>
+                        <span class="led-label">L</span>
+                        <span id="channelSignalLedL" class="led-value">–</span>
+                    </div>
+                    <div class="led-unit">
+                        <span id="signalLedR" class="led"></span>
+                        <span class="led-label">R</span>
+                        <span id="channelSignalLedR" class="led-value">–</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card" id="sectionPre">
+                <h2>Pre Gain</h2>
+                <div class="gain-control">
+                    <input type="range" id="gainPreSlider" min="-30" max="30" step="0.5" value="0"
+                        aria-label="Pre Gain">
+                    <div class="field field-unit">
+                        <input type="text" id="gainPreInput" inputmode="decimal" placeholder="0">
+                        <span class="unit">dB</span>
+                    </div>
+                </div>
+                <button id="gainPreSend" class="btn">Senden</button>
+                <p id="outputGainPre" class="status"></p>
+            </div>
+        </section>
+
+        <!-- =======================
+             Filter 1 … FILTER_COUNT (werden in app.js aus dem Template erzeugt)
+             ======================= -->
+        <h2 class="section-title">Filter</h2>
+        <section class="filter-grid" id="filterGrid"></section>
+
         <template id="filterTemplate">
-            <div class="container filter-container">
-                <div class="filter-header">
-                    <h1 data-role="title">Filter</h1>
-                    <button data-role="bypass" class="bypass-btn">Bypass</button>
+            <div class="card filter-card">
+                <div class="card-head">
+                    <h2 data-role="title">Filter</h2>
+                    <button data-role="bypass" class="toggle-btn" title="Filter umgehen">Bypass</button>
                 </div>
 
-                <!-- Filtertyp -->
-                <label data-role="typeLabel">Typ:</label>
+                <label data-role="typeLabel">Typ</label>
                 <select data-role="type">
                     <option value="bell">Bell</option>
                 </select>
 
-                <!-- Filterparameter -->
-                <label data-role="freqLabel">Frequenz:</label>
-                <input type="text" data-role="freq" placeholder="z.B. 440 Hz">
+                <div class="field-row">
+                    <div>
+                        <label data-role="freqLabel">Frequenz</label>
+                        <div class="field field-unit">
+                            <input type="text" data-role="freq" inputmode="decimal" placeholder="1000">
+                            <span class="unit">Hz</span>
+                        </div>
+                    </div>
+                    <div>
+                        <label data-role="gainLabel">Gain</label>
+                        <div class="field field-unit">
+                            <input type="text" data-role="gain" inputmode="decimal" placeholder="0">
+                            <span class="unit">dB</span>
+                        </div>
+                    </div>
+                    <div>
+                        <label data-role="qLabel">Q</label>
+                        <div class="field">
+                            <input type="text" data-role="q" inputmode="decimal" placeholder="1">
+                        </div>
+                    </div>
+                </div>
 
-                <label data-role="gainLabel">Gain:</label>
-                <input type="text" data-role="gain" placeholder="z.B. 10dB">
-
-                <label data-role="qLabel">Q:</label>
-                <input type="text" data-role="q" placeholder="z.B. 1">
-
-                <button data-role="send">Absenden</button>
-                <p data-role="output" class="outputText"></p>
+                <button data-role="send" class="btn">Senden</button>
+                <p data-role="output" class="status"></p>
             </div>
         </template>
 
         <!-- =======================
-             Post Filter Sektion
+             Post Gain + Mute
              ======================= -->
-        <div class="container" id="postFilterContainer">
-            <h1>Post Filter</h1>
+        <section class="row">
+            <div class="card" id="postFilterContainer">
+                <h2>Post Gain</h2>
+                <div class="gain-control">
+                    <input type="range" id="gainPostSlider" min="-30" max="30" step="0.5" value="0"
+                        aria-label="Post Gain">
+                    <div class="field field-unit">
+                        <input type="text" id="gainPostInput" inputmode="decimal" placeholder="0">
+                        <span class="unit">dB</span>
+                    </div>
+                </div>
+                <button id="gainPostSend" class="btn">Senden</button>
+                <p id="outputGainPost" class="status"></p>
+            </div>
 
-            <!-- Gain für Post-Filter -->
-            <label for="gainPost">Gain:</label>
-            <input type="text" id="gainPostInput" placeholder="z.B. 0 dB">
-            <button id="gainPostSend">Absenden</button>
-            <p id="outputGainPost" class="outputText"></p>
+            <div class="card">
+                <h2>Ausgang</h2>
+                <div class="switch-row">
+                    <label for="muteCheckbox">Mute</label>
+                    <label class="switch">
+                        <input type="checkbox" id="muteCheckbox">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <p id="outputMute" class="status"></p>
+            </div>
+        </section>
 
-            <!-- Mute Schalter -->
-            <label for="muteCheckbox">Mute:</label>
-            <label class="switch">
-                <input type="checkbox" id="muteCheckbox">
-                <span class="slider"></span>
-            </label>
-            <p id="outputMute" class="outputText"></p>
-        </div>
+        <p class="footnote">Eingaben werden im Browser gespeichert und beim nächsten Öffnen vorausgefüllt.
+            <button id="resetStorage" class="link-btn">Gespeicherte Werte löschen</button></p>
+    </main>
 
-    </div> <!-- Ende container-wrapper -->
-
-    <!-- Einbindung der JavaScript-Logik -->
     <script src="app.js"></script>
 </body>
 

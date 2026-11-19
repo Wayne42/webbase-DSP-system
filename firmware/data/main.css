@@ -1,131 +1,453 @@
 /* ===========================
-   Grundlegende Layout-Einstellungen
+   Farben & Grundwerte
    =========================== */
+:root {
+    --bg: #f2f4f7;
+    --card: #ffffff;
+    --text: #1f2933;
+    --muted: #6b7785;
+    --border: #dde2e8;
+    --accent: #1f9d55;
+    --accent-hover: #188046;
+    --accent-soft: #e3f4ea;
+    --danger: #d64545;
+    --danger-soft: #fbe9e9;
+    --neutral: #6c757d;
+    --radius: 10px;
+    --shadow: 0 1px 3px rgba(16, 24, 40, 0.08), 0 1px 2px rgba(16, 24, 40, 0.04);
+    --header-h: 104px; /* Höhe Topbar + Sprungnavigation, für Anker-Sprünge */
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
 body {
-    font-family: Arial, sans-serif;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 100vh;
     margin: 0;
-    padding: 20px;
-    background-color: #f4f4f4;
-    box-sizing: border-box;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    font-size: 15px;
+    color: var(--text);
+    background: var(--bg);
 }
 
-select {
-    width: 100%;
-    padding: 8px;
-    margin: 5px 0 10px 0;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    background-color: white;
-    font-size: 14px;
-    box-sizing: border-box;
+h2 {
+    font-size: 17px;
+    margin: 0 0 12px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
-.container h1 {
-    font-size: 20px;
-    margin: 0 0 10px 0;
-    line-height: 1.2;
-}
 
 /* ===========================
-   Container-System
+   Topbar + Navigation
    =========================== */
-.container-wrapper {
-    display: flex;
-    justify-content: center;
-    gap: 40px;
-    flex-wrap: wrap;
-    max-width: 100%;
-    align-items: stretch;
-    /* sorgt dafür, dass alle Container gleich hoch sind */
+.topbar {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
 }
 
-.container {
-    flex: 1 1 150px;
-    /* gleichmäßige, flexible Breite */
+.topbar-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 16px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.brand {
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.tabs {
+    display: flex;
+    gap: 4px;
+    height: 100%;
+}
+
+.tab {
+    display: flex;
+    align-items: center;
+    padding: 0 14px;
+    color: var(--muted);
+    text-decoration: none;
+    font-weight: 600;
+    border-bottom: 3px solid transparent;
+}
+
+.tab:hover {
+    color: var(--text);
+}
+
+.tab.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+}
+
+/* Verbindungsstatus (WebSocket) */
+.conn {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--muted);
+    white-space: nowrap;
+}
+
+.conn-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #f0b429;
+}
+
+.conn[data-state="ok"] .conn-dot {
+    background: var(--accent);
+}
+
+.conn[data-state="error"] .conn-dot {
+    background: var(--danger);
+}
+
+/* Sprungnavigation innerhalb einer Seite */
+.subnav {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 8px 16px;
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.subnav::-webkit-scrollbar {
+    display: none;
+}
+
+.chip {
+    flex: 0 0 auto;
+    padding: 6px 12px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.chip:hover {
+    border-color: var(--accent);
+}
+
+.chip.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+}
+
+.chip.is-bypassed:not(.active) {
+    color: var(--muted);
+    text-decoration: line-through;
+}
+
+
+/* ===========================
+   Seitenlayout
+   =========================== */
+.page {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px 16px 40px;
+}
+
+.row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.row-3 {
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    align-items: start;
+}
+
+.filter-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.section-title {
+    margin: 24px 0 12px;
+    color: var(--muted);
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 16px;
     display: flex;
     flex-direction: column;
-    text-align: center;
-    background-color: white;
-    padding: 20px;
-    border-radius: 10px;
-    box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
-    min-width: 120px;
-    width: 100%;
-    max-width: 350px;
-    box-sizing: border-box;
-    justify-content: space-between;
-    /* gleicht Innenhöhe besser aus */
+    scroll-margin-top: calc(var(--header-h) + 12px);
+    transition: opacity 0.2s;
 }
 
-/* Speziell für Mute-Container */
-.mute-container {
-    flex: 0 0 auto;
-    /* verhindert flex-grow und flex-shrink */
-    max-width: 120px;
-    /* maximale Breite */
-    width: auto;
-    /* natürliche Breite */
-    min-width: unset;
+.card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
 }
+
+.card-head h2 {
+    margin: 0;
+}
+
+.filter-card.is-bypassed {
+    opacity: 0.6;
+}
+
+.footnote {
+    font-size: 13px;
+    color: var(--muted);
+    text-align: center;
+}
+
 
 /* ===========================
    Formularelemente
    =========================== */
 label {
-    text-align: left;
-    font-weight: bold;
-    margin: 10px 0 5px 0;
-    color: #333;
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+    margin: 10px 0 4px;
+}
+
+input[type="text"],
+select {
+    width: 100%;
+    padding: 9px 10px;
+    font: inherit;
+    color: inherit;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: #fff;
+}
+
+input[type="text"]:focus,
+select:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+input[type="range"] {
+    width: 100%;
+    margin: 8px 0;
+    accent-color: var(--accent);
+}
+
+/* Eingabefeld mit Einheit rechts */
+.field {
+    position: relative;
+}
+
+.field-unit input {
+    padding-right: 34px;
+}
+
+.unit {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 12px;
+    color: var(--muted);
+    pointer-events: none;
+}
+
+.field-row {
+    display: grid;
+    grid-template-columns: 1.3fr 1fr 0.8fr;
+    gap: 8px;
+}
+
+.gain-control {
+    display: grid;
+    grid-template-columns: 1fr 96px;
+    gap: 12px;
+    align-items: center;
+}
+
+.label-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.value-badge {
+    font-weight: 700;
     font-size: 14px;
 }
 
-input {
-    padding: 10px;
-    margin: 10px 0;
-    width: 100%;
-    border-radius: 5px;
-    border: 1px solid #ccc;
-    box-sizing: border-box;
-}
-
-button {
-    margin-top: 20px;
-    padding: 10px 20px;
+/* Buttons */
+.btn {
+    margin-top: 14px;
+    padding: 10px 16px;
     border: none;
-    border-radius: 5px;
-    background-color: #28a745;
-    color: white;
+    border-radius: 6px;
+    background: var(--accent);
+    color: #fff;
+    font: inherit;
+    font-weight: 600;
     cursor: pointer;
 }
 
-button:hover {
-    background-color: #218838;
+.btn:hover {
+    background: var(--accent-hover);
 }
 
-/* ===========================
-   Ausgabebereich (z.B. Debug-Text)
-   =========================== */
-.outputText {
-    font-size: 10px;
-    margin-top: 10px;
-    font-weight: bold;
-    color: #333;
+.btn-secondary {
+    background: var(--neutral);
 }
 
+.btn-secondary:hover {
+    background: #5a6268;
+}
+
+button:disabled,
+button:disabled:hover {
+    background: #c3c8ce;
+    cursor: not-allowed;
+}
+
+.btn-row {
+    display: flex;
+    gap: 8px;
+}
+
+.btn-row .btn {
+    flex: 1;
+    margin-top: 8px;
+}
+
+.toggle-btn {
+    padding: 4px 10px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: #fff;
+    color: var(--muted);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.toggle-btn:hover {
+    border-color: var(--neutral);
+}
+
+.toggle-btn.active {
+    background: var(--danger);
+    border-color: var(--danger);
+    color: #fff;
+}
+
+.link-btn {
+    border: none;
+    background: none;
+    padding: 0;
+    color: var(--danger);
+    font: inherit;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+/* Statuszeile unter Karten */
+.status {
+    min-height: 1.2em;
+    margin: 8px 0 0;
+    font-size: 12px;
+    color: var(--muted);
+    word-break: break-word;
+}
+
+.status[data-type="ok"] {
+    color: var(--accent);
+}
+
+.status[data-type="error"] {
+    color: var(--danger);
+}
+
+.status:empty {
+    display: none;
+}
+
+.hint {
+    font-size: 13px;
+    color: var(--muted);
+    margin: 0 0 12px;
+    line-height: 1.45;
+}
+
+.muted {
+    color: var(--muted);
+    margin: 0;
+}
+
+kbd {
+    font-family: inherit;
+    font-size: 12px;
+    padding: 1px 5px;
+    border: 1px solid var(--border);
+    border-bottom-width: 2px;
+    border-radius: 4px;
+    background: var(--bg);
+}
+
+
 /* ===========================
-   Mute-Switch (Toggle)
+   Mute-Switch
    =========================== */
+.switch-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.switch-row label {
+    margin: 0;
+    font-size: 15px;
+    color: var(--text);
+}
+
 .switch {
     position: relative;
-    display: block;
-    width: 40px;
-    height: 20px;
-    margin: 20px auto;
-    /* horizontale Zentrierung */
+    display: inline-block;
+    width: 44px;
+    height: 24px;
 }
 
 .switch input {
@@ -136,181 +458,120 @@ button:hover {
 
 .slider {
     position: absolute;
+    inset: 0;
     cursor: pointer;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: #ccc;
-    transition: 0.4s;
-    border-radius: 20px;
+    background: #c3c8ce;
+    border-radius: 24px;
+    transition: 0.2s;
 }
 
 .slider:before {
-    position: absolute;
     content: "";
-    height: 16px;
-    width: 16px;
-    left: 2px;
-    bottom: 2px;
-    background-color: white;
-    transition: 0.4s;
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    left: 3px;
+    top: 3px;
+    background: #fff;
     border-radius: 50%;
+    transition: 0.2s;
 }
 
-input:checked+.slider {
-    background-color: #dc3545;
+input:checked + .slider {
+    background: var(--danger);
 }
 
-input:checked+.slider:before {
+input:checked + .slider:before {
     transform: translateX(20px);
 }
 
+
 /* ===========================
-   Input "LED"
+   Pegel-LEDs
    =========================== */
-/* LED-Container wie Input, horizontal + vertikal zentriert */
 .led-container {
     display: flex;
-    justify-content: center;
+    justify-content: space-around;
     align-items: center;
-    gap: 30px;
-    /* Abstand zwischen L und R */
-    margin: 10px 0 0 0;
-    width: 100%;
-    /* volle Breite */
+    flex: 1;
+    padding: 8px 0;
 }
-
-#outputSignalLeds {
-    margin: 0% 0;
-    padding: 0;
-}
-
 
 .led-unit {
     display: flex;
     flex-direction: column;
     align-items: center;
+    gap: 6px;
 }
 
-/* LED (Kreis) */
 .led {
-    width: 10px;
-    height: 10px;
+    width: 16px;
+    height: 16px;
     border-radius: 50%;
-    background-color: gray;
-    box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
+    background: #b8bec5;
+    box-shadow: inset 0 0 3px rgba(0, 0, 0, 0.3);
 }
 
 .led.green {
-    background-color: #28a745;
+    background: #28a745;
     box-shadow: 0 0 8px #28a745;
 }
 
 .led.yellow {
-    background-color: #e7f708;
-    box-shadow: 0 0 8px #e7f708;
+    background: #e7d808;
+    box-shadow: 0 0 8px #e7d808;
 }
 
-
 .led.red {
-    background-color: #dc3545;
-    box-shadow: 0 0 8px #dc3545;
+    background: var(--danger);
+    box-shadow: 0 0 8px var(--danger);
 }
 
 .led.black {
-    background-color: #000000;
-    box-shadow: 0 0 8px #000000;
+    background: #000;
 }
 
+.led-label {
+    font-weight: 700;
+}
+
+.led-value {
+    font-size: 13px;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+}
+
+
 /* ===========================
-   Filter-Header mit Bypass-Button
+   Hörtest
    =========================== */
-.filter-header {
-    display: flex;
-    justify-content: space-between;
+.step {
+    display: inline-flex;
     align-items: center;
-    margin-bottom: 10px;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--accent-soft);
+    color: var(--accent);
+    font-size: 13px;
 }
 
-.filter-header h1 {
-    font-size: 20px;
-    margin: 0;
-    text-align: left;
-}
-
-.bypass-btn {
-    background-color: #6c757d;
-    color: white;
-    border: none;
-    padding: 5px 10px;
-    border-radius: 5px;
-    font-size: 12px;
-    cursor: pointer;
-    margin-left: 10px;
-}
-
-.bypass-btn.active {
-    background-color: #dc3545;
-    /* Grau für aktiven Bypass */
-}
-
-/* ===========================
-   Responsive Design
-   =========================== */
-@media (max-width: 600px) {
-    body {
-        flex-direction: column;
-        padding: 10px;
-    }
-
-    .container-wrapper {
-        flex-direction: column;
-        align-items: center;
-        gap: 20px;
-    }
-
-    .container {
-        width: 100%;
-        max-width: 100%;
-        padding: 15px;
-    }
-
-    #gainSlider {
-        height: 150px;
-    }
-
-    button {
-        width: 100%;
-    }
-}
-
-/* ===========================
-   Hörtest (hoertest.html)
-   =========================== */
-.hint {
-    font-size: 12px;
-    color: #555;
-    text-align: left;
-    margin: 0 0 10px 0;
-}
-
-.page-link {
-    font-size: 12px;
-    color: #28a745;
+.test-display {
+    text-align: center;
+    padding: 12px 0;
 }
 
 .big-value {
-    font-size: 22px;
-    font-weight: bold;
+    font-size: 32px;
+    font-weight: 700;
     margin: 0;
-    color: #333;
 }
 
 .level-bar {
     width: 100%;
     height: 12px;
-    background-color: #e9ecef;
+    background: #e9ecef;
     border-radius: 6px;
     overflow: hidden;
     margin: 10px 0;
@@ -324,79 +585,84 @@ input:checked+.slider:before {
 
 .heard-btn {
     font-size: 18px;
-    padding: 18px 20px;
-}
-
-button:disabled,
-button:disabled:hover {
-    background-color: #b5b5b5;
-    cursor: not-allowed;
-}
-
-.secondary-btn {
-    background-color: #6c757d;
-    margin-top: 10px;
-}
-
-.secondary-btn:hover {
-    background-color: #5a6268;
-}
-
-.results-container {
-    max-width: 420px;
+    padding: 20px;
 }
 
 .band-row {
-    border-bottom: 1px solid #eee;
-    padding: 4px 0;
+    border-bottom: 1px solid var(--border);
+    padding: 6px 0;
+}
+
+.band-row:last-child {
+    border-bottom: none;
 }
 
 .band-head {
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 13px;
+    font-size: 14px;
 }
 
 .band-freq {
-    font-weight: bold;
-    width: 60px;
-    text-align: left;
+    font-weight: 700;
+    width: 64px;
 }
 
 .band-value {
     flex: 1;
-    text-align: left;
-    color: #555;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
 }
 
 .band-gain {
-    color: #28a745;
-    font-weight: bold;
+    color: var(--accent);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
 }
 
 .band-row input[type="range"] {
-    margin: 4px 0;
-    padding: 0;
+    margin: 4px 0 0;
 }
 
 .play-btn {
-    margin: 0;
-    padding: 4px 10px;
-    width: auto;
-    background-color: #6c757d;
+    width: 32px;
+    height: 28px;
+    padding: 0;
+    border: none;
+    border-radius: 6px;
+    background: var(--neutral);
+    color: #fff;
+    cursor: pointer;
 }
 
 .play-btn.active {
-    background-color: #dc3545;
+    background: var(--danger);
 }
 
-.dsp-toggle {
-    margin: 20px 0 0 0;
-    padding: 10px 20px;
-    font-size: 14px;
+.dsp-toggle,
+.dsp-toggle:hover {
+    background: var(--neutral);
 }
 
 .dsp-toggle.active {
-    background-color: #28a745;
+    background: var(--accent);
+}
+
+
+/* ===========================
+   Smartphone
+   =========================== */
+@media (max-width: 600px) {
+    .brand {
+        display: none;
+    }
+
+    .tab {
+        padding: 0 10px;
+    }
+
+    .page {
+        padding-top: 12px;
+    }
 }
