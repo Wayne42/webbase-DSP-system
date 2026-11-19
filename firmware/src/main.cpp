@@ -48,6 +48,7 @@ bool connectToHomeWiFi()
   else 
   {
     Serial.println("\n[WLAN] Verbindung fehlgeschlagen (Timeout).");
+    WiFi.mode(WIFI_AP);
     return false;
   }
 }
