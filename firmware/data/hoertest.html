@@ -26,13 +26,47 @@
         <section class="row row-3">
 
             <!-- =======================
-                 1. Test
+                 1. Pre Gain bestimmen (weißes Rauschen)
                  ======================= -->
             <div class="card">
-                <h2><span class="step">1</span>Test</h2>
+                <h2><span class="step">1</span>Pre Gain</h2>
 
                 <p class="hint">
-                    Lautstärke am Gerät auf ein angenehmes Maß stellen. Auf jeder Frequenz wird ein Ton
+                    Lautstärke am Gerät auf ein angenehmes Maß stellen. Weißes Rauschen wird langsam
+                    lauter – klicke auf „Ich höre das Rauschen“ oder drücke die <kbd>Leertaste</kbd>,
+                    sobald du es hörst. Daraus wird der Pre Gain berechnet und gesendet.
+                    Für die Messung wird der Pre Gain auf 0 dB gesetzt und alle Filter auf Bypass.
+                </p>
+
+                <div class="test-display">
+                    <p id="noiseThreshold" class="big-value">–</p>
+                    <p class="muted">Hörschwelle Rauschen</p>
+                </div>
+
+                <button id="noiseHeard" class="btn heard-btn" disabled>Ich höre das Rauschen</button>
+                <div class="btn-row">
+                    <button id="noiseStart" class="btn">Messung starten</button>
+                    <button id="noiseCancel" class="btn btn-secondary" disabled>Abbrechen</button>
+                </div>
+
+                <div class="label-row">
+                    <label for="preGainSlider">Pre Gain</label>
+                    <span id="preGainValue" class="value-badge"></span>
+                </div>
+                <input type="range" id="preGainSlider" min="-30" max="30" step="0.5" value="0">
+                <button id="preGainSend" class="btn btn-secondary">Pre Gain senden</button>
+
+                <p id="outputNoise" class="status"></p>
+            </div>
+
+            <!-- =======================
+                 2. Test
+                 ======================= -->
+            <div class="card">
+                <h2><span class="step">2</span>Test</h2>
+
+                <p class="hint">
+                    Lautstärke am Gerät nicht mehr verändern. Auf jeder Frequenz wird ein Ton
                     von leise bis laut lauter. Sobald du ihn hörst, klicke auf „Ich höre den Ton“
                     oder drücke die <kbd>Leertaste</kbd>.
                 </p>
@@ -58,11 +92,11 @@
             </div>
 
             <!-- =======================
-                 2. Ergebnisse / manuelles Patchen
+                 3. Ergebnisse / manuelles Patchen
                  Zeilen werden in hoertest.js aus #bandTemplate erzeugt
                  ======================= -->
             <div class="card">
-                <h2><span class="step">2</span>Ergebnisse</h2>
+                <h2><span class="step">3</span>Ergebnisse</h2>
                 <p class="hint">
                     Hörschwelle pro Frequenz. Mit dem Slider anpassen und mit ▶ bei dieser Lautstärke
                     probehören. Daraus ergibt sich der Gain des jeweiligen Filters.
@@ -84,10 +118,10 @@
             </div>
 
             <!-- =======================
-                 3. Übertragung an den ADAU
+                 4. Übertragung an den ADAU
                  ======================= -->
             <div class="card">
-                <h2><span class="step">3</span>An DSP senden</h2>
+                <h2><span class="step">4</span>An DSP senden</h2>
 
                 <div class="label-row">
                     <label for="maxBoost">Maximaler Boost</label>

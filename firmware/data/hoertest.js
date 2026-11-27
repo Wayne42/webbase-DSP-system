@@ -1,4 +1,5 @@
 // -------------------------------------
+// Schritt 1: Pre Gain über die Hörschwelle von weißem Rauschen bestimmen.
 // Hörtest: 8 Frequenzen, Ton wird von leise bis laut lauter.
 // Ergebnis (Hörschwelle pro Frequenz) wird in Bell-Filter 1-8 umgerechnet
 // und kann wie in app.js per POST an den ADAU geschickt werden.
@@ -16,6 +17,15 @@ const FILTER_Q = 1.4;          // ca. 1 Oktave Bandbreite
 const FILTER_TYPE = 'bell';
 const STORAGE_KEY = 'hearingTestThresholds';
 const MAX_BOOST_KEY = 'dsp.hearingMaxBoost';
+
+// Pre Gain aus Rauschen: Die Hörschwelle des Rauschens soll nach dem Pre Gain
+// bei NOISE_TARGET_DB liegen -> Pre Gain = Hörschwelle - Ziel (begrenzt).
+// Beispiel: gehört bei -40 dBFS, Ziel -60 dBFS -> Pre Gain +20 dB
+const NOISE_TARGET_DB = -60;
+const PRE_GAIN_MIN = -30;      // Grenzen wie in app.js
+const PRE_GAIN_MAX = 30;
+const NOISE_THRESHOLD_KEY = 'dsp.hearingNoiseThreshold';
+const PRE_GAIN_KEY = 'dsp.preGain'; // gleicher Schlüssel wie im Equalizer (JSON-String)
 
 // Hörschwelle pro Frequenz in dBFS (null = noch nicht gemessen)
 const thresholds = loadThresholds();
@@ -127,6 +137,32 @@ function startTone(freq, levelDb) {
     return tone;
 }
 
+// Startet weißes Rauschen (Schleife über 2 s Zufallswerte) mit der Lautstärke levelDb.
+// Nutzt dasselbe "tone"-Objekt, damit stopTone/setToneLevel auch hier funktionieren
+let noiseBuffer = null;
+
+function startNoise(levelDb) {
+    stopTone();
+    const ctx = getAudioContext();
+    if (!noiseBuffer) {
+        noiseBuffer = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+        const data = noiseBuffer.getChannelData(0);
+        for (let i = 0; i < data.length; i++) {
+            data[i] = Math.random() * 2 - 1;
+        }
+    }
+    const src = ctx.createBufferSource();
+    const gain = ctx.createGain();
+    src.buffer = noiseBuffer;
+    src.loop = true;
+    gain.gain.setValueAtTime(dbToLinear(levelDb), ctx.currentTime);
+
+    src.connect(gain).connect(ctx.destination);
+    src.start();
+    tone = { osc: src, gain };
+    return tone;
+}
+
 function setToneLevel(levelDb) {
     if (!tone) return;
     const now = audioCtx.currentTime;
@@ -175,6 +211,7 @@ function showLevel(levelDb) {
 // nicht erkennen kann, wann der Ton startet
 function setTestControls(running) {
     $('testStart').disabled = running;
+    $('noiseStart').disabled = running;
     $('testCancel').disabled = !running;
     $('testHeard').disabled = !running;
 }
@@ -284,6 +321,172 @@ function finishTest() {
 
 
 // -------------------------------------
+// Schritt 1: Pre Gain über weißes Rauschen bestimmen
+// Rauschen wird nach zufälliger Pause von LEVEL_MIN_DB bis LEVEL_MAX_DB lauter,
+// der Pegel beim Klick ist die Hörschwelle
+// -------------------------------------
+
+const noise = {
+    running: false,
+    phase: 'idle',     // 'prepare' = Pre Gain/Bypass wird gesendet, 'pause', 'ramp'
+    rampStart: 0,
+    pauseTimer: null,
+    animFrame: null
+};
+
+const preGainFromThreshold = thresholdDb =>
+    clamp(Math.round((thresholdDb - NOISE_TARGET_DB) * 2) / 2, PRE_GAIN_MIN, PRE_GAIN_MAX);
+
+function showPreGain(gainDb) {
+    $('preGainSlider').value = gainDb;
+    $('preGainValue').textContent = `${gainDb > 0 ? '+' : ''}${gainDb.toFixed(1)} dB`;
+}
+
+function setNoiseStatus(text, type = 'info') {
+    $('outputNoise').textContent = text;
+    $('outputNoise').dataset.type = type;
+}
+
+function setNoiseControls(running) {
+    $('noiseStart').disabled = running;
+    $('noiseCancel').disabled = !running;
+    $('noiseHeard').disabled = !running;
+    $('testStart').disabled = running;
+    $('preGainSend').disabled = running;
+}
+
+// Pre Gain an den DSP senden und für den Equalizer speichern
+async function sendPreGain(gainDb) {
+    try {
+        await postForm('/preGain', { preGain: gainDb.toFixed(1) });
+        saveSetting(PRE_GAIN_KEY, JSON.stringify(gainDb.toFixed(1)));
+        setNoiseStatus(`Pre Gain ${gainDb.toFixed(1)} dB gesendet`, 'ok');
+        return true;
+    } catch (err) {
+        console.error(err);
+        setNoiseStatus('Fehler: ' + err.message, 'error');
+        return false;
+    }
+}
+
+async function startNoiseTest() {
+    getAudioContext(); // muss in einem Klick-Event erzeugt werden
+    noise.running = true;
+    noise.phase = 'prepare';
+    setNoiseControls(true);
+    setNoiseStatus('Bereite Messung vor …');
+
+    // Messung ohne Einfluss von bisherigem Pre Gain und Filtern
+    if (dsp.active) {
+        dsp.active = false;
+        setDspButton();
+    }
+    try {
+        await bypassAllFilters();
+        await postForm('/preGain', { preGain: '0' });
+    } catch (err) {
+        console.error(err);
+        stopNoiseTest('Fehler beim Vorbereiten: ' + err.message, 'error');
+        return;
+    }
+    if (!noise.running) return; // inzwischen abgebrochen
+
+    setNoiseStatus('Warte auf das Rauschen …');
+    scheduleNoisePause();
+}
+
+function scheduleNoisePause() {
+    clearTimeout(noise.pauseTimer);
+    noise.phase = 'pause';
+    const pause = PAUSE_MIN_MS + Math.random() * (PAUSE_MAX_MS - PAUSE_MIN_MS);
+    noise.pauseTimer = setTimeout(startNoiseRamp, pause);
+}
+
+function startNoiseRamp() {
+    const { gain } = startNoise(LEVEL_MIN_DB);
+    const ctx = audioCtx;
+    const duration = (LEVEL_MAX_DB - LEVEL_MIN_DB) / RAMP_DB_PER_SEC;
+
+    noise.phase = 'ramp';
+    noise.rampStart = ctx.currentTime;
+    gain.gain.cancelScheduledValues(ctx.currentTime);
+    gain.gain.setValueAtTime(dbToLinear(LEVEL_MIN_DB), ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(dbToLinear(LEVEL_MAX_DB), ctx.currentTime + duration);
+
+    const update = () => {
+        if (noiseRampLevel() >= LEVEL_MAX_DB) {
+            finishNoiseTest(LEVEL_MAX_DB, false);
+            return;
+        }
+        noise.animFrame = requestAnimationFrame(update);
+    };
+    noise.animFrame = requestAnimationFrame(update);
+}
+
+function noiseRampLevel() {
+    const elapsed = audioCtx.currentTime - noise.rampStart;
+    return clamp(LEVEL_MIN_DB + elapsed * RAMP_DB_PER_SEC, LEVEL_MIN_DB, LEVEL_MAX_DB);
+}
+
+function onNoiseHeard() {
+    if (!noise.running) return;
+    if (noise.phase === 'pause') {
+        setNoiseStatus('Zu früh – es lief noch kein Rauschen. Warte auf das Rauschen …', 'error');
+        scheduleNoisePause();
+        return;
+    }
+    if (noise.phase === 'ramp') {
+        finishNoiseTest(noiseRampLevel(), true);
+    }
+}
+
+function stopNoiseTest(message, type = 'info') {
+    clearTimeout(noise.pauseTimer);
+    cancelAnimationFrame(noise.animFrame);
+    stopTone();
+    noise.running = false;
+    noise.phase = 'idle';
+    setNoiseControls(false);
+    setNoiseStatus(message, type);
+}
+
+async function finishNoiseTest(levelDb, heard) {
+    const threshold = Math.round(levelDb);
+    stopNoiseTest('');
+
+    $('noiseThreshold').textContent = `${threshold} dBFS`;
+    saveSetting(NOISE_THRESHOLD_KEY, String(threshold));
+
+    const gainDb = preGainFromThreshold(threshold);
+    showPreGain(gainDb);
+    $('preGainSend').disabled = true;
+    const sent = await sendPreGain(gainDb);
+    $('preGainSend').disabled = false;
+    if (sent && !heard) {
+        setNoiseStatus(`Rauschen nicht gehört (max. ${LEVEL_MAX_DB} dBFS angenommen) – ` +
+            `Pre Gain ${gainDb.toFixed(1)} dB gesendet`, 'error');
+    }
+}
+
+// Gespeicherte Werte anzeigen
+function initNoiseStep() {
+    const threshold = loadSetting(NOISE_THRESHOLD_KEY, null);
+    if (threshold !== null) $('noiseThreshold').textContent = `${threshold} dBFS`;
+
+    let preGain = 0;
+    try {
+        const stored = JSON.parse(loadSetting(PRE_GAIN_KEY, 'null'));
+        if (stored !== null && !isNaN(parseFloat(String(stored).replace(',', '.')))) {
+            preGain = clamp(parseFloat(String(stored).replace(',', '.')), PRE_GAIN_MIN, PRE_GAIN_MAX);
+        }
+    } catch (err) { /* ignorieren */ }
+    showPreGain(preGain);
+    $('noiseHeard').disabled = true;
+    $('noiseCancel').disabled = true;
+}
+
+
+// -------------------------------------
 // Ergebnisse / manuelles Patchen
 // -------------------------------------
 
@@ -317,7 +520,7 @@ function updateGainLabels() {
 function togglePlayBand(index) {
     const wasPlaying = playingBand === index;
     stopBandPlayback();
-    if (wasPlaying || test.running) return;
+    if (wasPlaying || test.running || noise.running) return;
 
     const level = parseFloat(bandPart(index, 'slider').value);
     startTone(TEST_FREQUENCIES[index], level);
@@ -456,6 +659,16 @@ function toggleDsp() {
 // Event Handlers
 // -------------------------------------
 
+$('noiseStart').addEventListener('click', () => {
+    stopBandPlayback();
+    startNoiseTest();
+});
+$('noiseCancel').addEventListener('click', () => stopNoiseTest('Messung abgebrochen'));
+$('noiseHeard').addEventListener('click', onNoiseHeard);
+
+$('preGainSlider').addEventListener('input', () => showPreGain(parseFloat($('preGainSlider').value)));
+$('preGainSend').addEventListener('click', () => sendPreGain(parseFloat($('preGainSlider').value)));
+
 $('testStart').addEventListener('click', () => {
     stopBandPlayback();
     startTest();
@@ -465,7 +678,10 @@ $('testHeard').addEventListener('click', onHeard);
 
 // Leertaste = "Ich höre den Ton" (nur während des Tests)
 document.addEventListener('keydown', event => {
-    if (event.code === 'Space' && test.running) {
+    if (event.code === 'Space' && noise.running) {
+        event.preventDefault();
+        onNoiseHeard();
+    } else if (event.code === 'Space' && test.running) {
         event.preventDefault();
         onHeard();
     }
@@ -488,3 +704,4 @@ $('maxBoost').value = loadSetting(MAX_BOOST_KEY, $('maxBoost').value);
 $('maxBoostValue').textContent = `${$('maxBoost').value} dB`;
 createBandRows();
 setDspButton();
+initNoiseStep();
